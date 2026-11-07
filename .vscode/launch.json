@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run Aurelia Hotel",
+      "request": "launch",
+      "mainClass": "com.hotel.reservation.HotelApplication",
+      "projectName": "reservation",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
