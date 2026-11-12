@@ -1,11 +1,6 @@
 # Maven build output
 target/
 
-# Runtime data files (created on first run; contain user-entered records)
-data/
-*.tmp
-*.bak
-
 # IDE / editor
 .idea/
 *.iml
@@ -18,7 +13,7 @@ data/
 .DS_Store
 Thumbs.db
 
-# Logs and local secrets
+# Logs and local secrets (your MySQL password lives in application-local.properties)
 *.log
 .env
 application-local.properties

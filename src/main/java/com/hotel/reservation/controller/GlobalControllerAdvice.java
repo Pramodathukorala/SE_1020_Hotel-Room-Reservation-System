@@ -1,11 +1,14 @@
 package com.hotel.reservation.controller;
 
 import com.hotel.reservation.exception.ResourceNotFoundException;
-import com.hotel.reservation.exception.StorageException;
+import com.hotel.reservation.security.CurrentUser;
+import com.hotel.reservation.security.SessionUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,6 +30,18 @@ public class GlobalControllerAdvice {
         return request.getRequestURI();
     }
 
+    /** The signed-in guest (or null), used by the navigation bar. */
+    @ModelAttribute("currentGuest")
+    public SessionUser currentGuest(HttpServletRequest request) {
+        return CurrentUser.guest(request.getSession(false));
+    }
+
+    /** The signed-in administrator (or null), used by the admin sidebar. */
+    @ModelAttribute("currentAdmin")
+    public SessionUser currentAdmin(HttpServletRequest request) {
+        return CurrentUser.admin(request.getSession(false));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public String handleNotFound(ResourceNotFoundException e, Model model, HttpServletResponse response) {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -40,12 +55,26 @@ public class GlobalControllerAdvice {
                 "The value '" + e.getValue() + "' is not valid for " + e.getName() + ".");
     }
 
-    @ExceptionHandler(StorageException.class)
-    public String handleStorage(StorageException e, Model model, HttpServletResponse response) {
-        log.error("Storage failure", e);
+    /**
+     * A database constraint (unique key, foreign key, check) rejected a change.
+     * The services check these rules first, so this is only a safety net.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public String handleConstraint(DataIntegrityViolationException e, Model model, HttpServletResponse response) {
+        log.warn("Database constraint violation: {}", e.getMostSpecificCause().getMessage());
+        response.setStatus(HttpServletResponse.SC_CONFLICT);
+        return errorPage(model, 409, "That change conflicts with existing records",
+                "The database rejected the change because it would break a rule (for example a duplicate value "
+                        + "or a record that is still in use). Please go back and try again.");
+    }
+
+    /** Any other database problem, e.g. MySQL is not running. */
+    @ExceptionHandler(DataAccessException.class)
+    public String handleDatabase(DataAccessException e, Model model, HttpServletResponse response) {
+        log.error("Database failure", e);
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return errorPage(model, 500, "Our records are temporarily unavailable",
-                "The data file could not be read or written. Please check the data folder and try again.");
+                "The database could not be reached. Please check that MySQL is running and try again.");
     }
 
     private static String errorPage(Model model, int status, String title, String message) {

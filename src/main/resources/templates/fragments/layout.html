@@ -34,12 +34,32 @@
                 <li class="nav-item"><a class="nav-link" th:classappend="${currentUri == '/'} ? 'active'" th:href="@{/}">Home</a></li>
                 <li class="nav-item"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/rooms')} ? 'active'" th:href="@{/rooms}">Rooms &amp; Suites</a></li>
                 <li class="nav-item"><a class="nav-link" th:href="@{/#experiences}">Experiences</a></li>
-                <li class="nav-item"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/manage-booking')} ? 'active'" th:href="@{/manage-booking}">Manage Booking</a></li>
-                <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="btn btn-sm btn-outline-navy" th:href="@{/admin}"><i class="bi bi-speedometer2 me-1"></i>Admin</a></li>
+                <!-- not signed in -->
+                <li class="nav-item" th:if="${currentGuest == null}"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/manage-booking')} ? 'active'" th:href="@{/manage-booking}">Manage Booking</a></li>
+                <li class="nav-item ms-lg-2 mt-2 mt-lg-0" th:if="${currentGuest == null}"><a class="btn btn-sm btn-outline-navy" th:href="@{/login}"><i class="bi bi-person me-1"></i>Sign in</a></li>
+                <!-- signed-in guest -->
+                <li class="nav-item" th:if="${currentGuest != null}"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/my-bookings')} ? 'active'" th:href="@{/my-bookings}">My Bookings</a></li>
+                <li class="nav-item dropdown ms-lg-2 mt-2 mt-lg-0" th:if="${currentGuest != null}">
+                    <button class="btn btn-sm btn-outline-navy dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-1"></i><span th:text="${currentGuest.firstName()}">Guest</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" th:href="@{/my-bookings}"><i class="bi bi-journal-bookmark me-2"></i>My bookings</a></li>
+                        <li><a class="dropdown-item" th:href="@{/account/profile}"><i class="bi bi-person-gear me-2"></i>My profile</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form th:action="@{/logout}" method="post">
+                                <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
                 <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="btn btn-sm btn-gold" th:href="@{/rooms}">Book a Stay</a></li>
             </ul>
         </div>
     </div>
+    <!-- flash messages after redirects (sign in/out, booking changes) -->
+    <div th:replace="~{fragments/layout :: toasts}"></div>
 </nav>
 
 <!-- ============ flash messages (after redirects) ============ -->
@@ -49,7 +69,7 @@
         <div th:text="${success}">Saved</div>
         <button type="button" class="btn-close" aria-label="Close"></button>
     </div>
-    <div th:if="${error}" class="toast-luxe error" role="alert">
+    <div th:if="${error != null and status == null}" class="toast-luxe error" role="alert">
         <i class="bi bi-exclamation-octagon-fill lead-icon"></i>
         <div th:text="${error}">Error</div>
         <button type="button" class="btn-close" aria-label="Close"></button>

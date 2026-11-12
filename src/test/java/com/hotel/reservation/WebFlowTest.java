@@ -1,19 +1,17 @@
 package com.hotel.reservation;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.nio.file.Path;
 import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -22,20 +20,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Starts the full Spring application (controllers + Thymeleaf + services + file storage)
- * against a temporary data folder, and drives it through HTTP requests.
+ * Starts the full Spring application (controllers + Thymeleaf + services + JDBC repositories)
+ * against an in-memory SQL database (profile "test"), and drives it through HTTP requests.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class WebFlowTest {
-
-    @TempDir
-    static Path dataDir;
-
-    @DynamicPropertySource
-    static void dataFolder(DynamicPropertyRegistry registry) {
-        registry.add("hotel.storage.data-dir", () -> dataDir.toString());
-    }
 
     @Autowired
     MockMvc mvc;
@@ -43,14 +34,117 @@ class WebFlowTest {
     private static final String IN = LocalDate.now().plusDays(10).toString();
     private static final String OUT = LocalDate.now().plusDays(12).toString();
 
+    /** Signs in as the test administrator and returns the session to use for admin requests. */
+    private MockHttpSession adminSession() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        mvc.perform(post("/admin/login").session(session).param("username", "admin").param("password", "TestAdmin123"))
+                .andExpect(redirectedUrl("/admin"));
+        return session;
+    }
+
+    private MockHttpSession registerGuest(String name, String email) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        mvc.perform(post("/register").session(session)
+                        .param("customer.fullName", name).param("customer.email", email)
+                        .param("customer.phone", "0771234567").param("customer.address", "1 Test Road")
+                        .param("password", "Secret123").param("confirmPassword", "Secret123"))
+                .andExpect(redirectedUrl("/my-bookings"));
+        return session;
+    }
+
     @Test
     void publicAndAdminPagesRender() throws Exception {
-        String[] pages = {"/", "/rooms", "/rooms/R001", "/manage-booking", "/admin", "/admin/rooms", "/admin/rooms/new",
-                "/admin/customers", "/admin/customers/new", "/admin/reservations", "/admin/reservations/new"};
-        for (String page : pages) {
+        for (String page : new String[]{"/", "/rooms", "/rooms/R001", "/manage-booking", "/login", "/register", "/admin/login"}) {
             mvc.perform(get(page)).andExpect(status().isOk());
         }
+        MockHttpSession admin = adminSession();
+        for (String page : new String[]{"/admin", "/admin/rooms", "/admin/rooms/new", "/admin/customers",
+                "/admin/customers/new", "/admin/reservations", "/admin/reservations/new"}) {
+            mvc.perform(get(page).session(admin)).andExpect(status().isOk());
+        }
         mvc.perform(get("/")).andExpect(content().string(containsString("Heritage Suite")));   // cheapest seeded suite is featured
+    }
+
+    @Test
+    void homePageHasNoAdminButton() throws Exception {
+        mvc.perform(get("/"))
+                .andExpect(content().string(not(containsString("href=\"/admin\""))))
+                .andExpect(content().string(containsString("Sign in")));
+    }
+
+    @Test
+    void adminPagesNeedAnAdminLogin() throws Exception {
+        mvc.perform(get("/admin/rooms")).andExpect(redirectedUrl("/admin/login?next=/admin/rooms"));
+        mvc.perform(post("/admin/rooms/R001/delete")).andExpect(redirectedUrl("/admin/login"));
+        mvc.perform(post("/admin/login").param("username", "admin").param("password", "wrong-password"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Incorrect username or password.")));
+        // a signed-in GUEST is still not an admin
+        MockHttpSession guest = registerGuest("Guest Not Admin", "not.admin@example.com");
+        mvc.perform(get("/admin").session(guest)).andExpect(redirectedUrl("/admin/login?next=/admin"));
+    }
+
+    @Test
+    void guestRegistersBooksAndManagesOwnBookings() throws Exception {
+        mvc.perform(get("/my-bookings")).andExpect(redirectedUrl("/login?next=/my-bookings"));
+
+        MockHttpSession guest = registerGuest("Kamala Silva", "kamala@example.com");
+        String in = LocalDate.now().plusDays(40).toString();
+        String out = LocalDate.now().plusDays(42).toString();
+        // the booking form uses the account's details automatically
+        mvc.perform(get("/book").session(guest).param("roomId", "R004").param("checkIn", in).param("checkOut", out))
+                .andExpect(content().string(containsString("kamala@example.com")));
+        String location = mvc.perform(post("/book").session(guest)
+                        .param("roomId", "R004").param("checkIn", in).param("checkOut", out).param("guests", "1")
+                        .param("customer.fullName", "x").param("customer.email", "not-an-email")
+                        .param("customer.phone", "0779999999").param("customer.address", "Elsewhere"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn().getResponse().getRedirectedUrl();
+        String reference = location.substring(location.lastIndexOf('/') + 1);
+
+        // it is listed under the signed-in guest, not under the details typed into the form
+        mvc.perform(get("/my-bookings").session(guest))
+                .andExpect(content().string(containsString(reference)))
+                .andExpect(content().string(containsString("Kamala Silva")));
+
+        // UPDATE: extend the stay by one night
+        String newOut = LocalDate.now().plusDays(43).toString();
+        mvc.perform(post("/my-bookings/" + reference).session(guest)
+                        .param("checkIn", in).param("checkOut", newOut).param("guests", "2"))
+                .andExpect(redirectedUrl("/my-bookings/" + reference));
+        mvc.perform(get("/my-bookings/" + reference).session(guest))
+                .andExpect(content().string(containsString("3 nights")));
+
+        // another guest cannot see, change or cancel it
+        MockHttpSession other = registerGuest("Other Person", "other.person@example.com");
+        mvc.perform(get("/my-bookings/" + reference).session(other)).andExpect(status().isNotFound());
+        mvc.perform(post("/my-bookings/" + reference + "/cancel").session(other)).andExpect(status().isNotFound());
+
+        // DELETE is refused while the booking is active, allowed after cancelling
+        mvc.perform(post("/my-bookings/" + reference + "/delete").session(guest)).andExpect(redirectedUrl("/my-bookings"));
+        mvc.perform(get("/my-bookings/" + reference).session(guest)).andExpect(status().isOk());
+        mvc.perform(post("/my-bookings/" + reference + "/cancel").session(guest)).andExpect(redirectedUrl("/my-bookings"));
+        mvc.perform(post("/my-bookings/" + reference + "/delete").session(guest)).andExpect(redirectedUrl("/my-bookings"));
+        mvc.perform(get("/my-bookings/" + reference).session(guest)).andExpect(status().isNotFound());
+
+        // sign out, then sign in again with email + password
+        mvc.perform(post("/logout").session(guest)).andExpect(redirectedUrl("/"));
+        mvc.perform(get("/my-bookings").session(guest)).andExpect(status().is3xxRedirection());
+        mvc.perform(post("/login").session(guest).param("email", "kamala@example.com").param("password", "Secret123"))
+                .andExpect(redirectedUrl("/my-bookings"));
+        mvc.perform(post("/login").param("email", "kamala@example.com").param("password", "Wrong1234"))
+                .andExpect(content().string(containsString("Incorrect email or password.")));
+    }
+
+    @Test
+    void registrationValidatesPasswords() throws Exception {
+        mvc.perform(post("/register")
+                        .param("customer.fullName", "Weak Password").param("customer.email", "weak@example.com")
+                        .param("customer.phone", "0771234567").param("customer.address", "1 Test Road")
+                        .param("password", "short").param("confirmPassword", "different"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Password must be 8-72 characters.")))
+                .andExpect(content().string(containsString("The two passwords do not match.")));
     }
 
     @Test
@@ -99,15 +193,16 @@ class WebFlowTest {
 
     @Test
     void adminRoomCrudThroughTheWeb() throws Exception {
-        mvc.perform(post("/admin/rooms").param("roomNumber", "777").param("name", "Web Room").param("type", "STANDARD")
+        MockHttpSession admin = adminSession();
+        mvc.perform(post("/admin/rooms").session(admin).param("roomNumber", "777").param("name", "Web Room").param("type", "STANDARD")
                         .param("description", "Created in a test").param("basePrice", "12000").param("capacity", "2")
                         .param("bedType", "Twin"))
                 .andExpect(redirectedUrl("/admin/rooms"));
 
-        mvc.perform(get("/admin/rooms").param("q", "777"))
+        mvc.perform(get("/admin/rooms").session(admin).param("q", "777"))
                 .andExpect(content().string(containsString("Web Room")));
 
-        mvc.perform(post("/admin/rooms").param("roomNumber", "777").param("name", "Duplicate").param("type", "STANDARD")
+        mvc.perform(post("/admin/rooms").session(admin).param("roomNumber", "777").param("name", "Duplicate").param("type", "STANDARD")
                         .param("description", "x").param("basePrice", "100").param("capacity", "2"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("already exists")));
@@ -115,12 +210,13 @@ class WebFlowTest {
 
     @Test
     void customerWithReservationCannotBeDeleted() throws Exception {
-        mvc.perform(post("/admin/reservations").param("customerId", "C001").param("roomId", "R003")
+        MockHttpSession admin = adminSession();
+        mvc.perform(post("/admin/reservations").session(admin).param("customerId", "C001").param("roomId", "R003")
                         .param("checkIn", IN).param("checkOut", OUT).param("guests", "1"))
                 .andExpect(status().is3xxRedirection());
 
-        mvc.perform(post("/admin/customers/C001/delete"))
+        mvc.perform(post("/admin/customers/C001/delete").session(admin))
                 .andExpect(redirectedUrl("/admin/customers"));
-        mvc.perform(get("/admin/customers/C001")).andExpect(status().isOk());   // still exists
+        mvc.perform(get("/admin/customers/C001").session(admin)).andExpect(status().isOk());   // still exists
     }
 }

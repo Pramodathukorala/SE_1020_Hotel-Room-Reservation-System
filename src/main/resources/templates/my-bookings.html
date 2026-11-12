@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My bookings')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset">
+    <div class="container py-4">
+        <!-- ============ header ============ -->
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <span class="eyebrow">My account</span>
+                <h1 class="display-6 mb-1">Hello, <span th:text="${currentGuest.firstName()}">Guest</span></h1>
+                <p class="text-muted-soft mb-0">
+                    <span th:text="${bookings.size()}">0</span> booking(s) ·
+                    <span th:text="${activeCount}">0</span> active
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-navy" th:href="@{/account/profile}"><i class="bi bi-person-gear me-1"></i>My profile</a>
+                <a class="btn btn-gold" th:href="@{/rooms}"><i class="bi bi-plus-lg me-1"></i>New booking</a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- ============ bookings list ============ -->
+            <div class="col-lg-8">
+                <div class="d-grid gap-3" th:if="${!bookings.isEmpty()}">
+                    <article class="booking-row" th:each="d : ${bookings}" th:with="r=${d.reservation}, room=${d.room}"
+                             th:classappend="${!r.active} ? 'is-cancelled'">
+                        <img th:src="@{${room != null ? room.imageUrl : '/images/fallback.svg'}}" th:alt="${room != null ? room.name : 'Room'}">
+                        <div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                <span class="ref" th:text="${r.id}">RES-0001</span>
+                                <span class="pill" th:classappend="${r.active} ? (${r.checkOut.isAfter(today)} ? 'pill-confirmed' : 'pill-past') : 'pill-cancelled'"
+                                      th:text="${r.active and !r.checkOut.isAfter(today)} ? 'Completed' : ${r.status.displayName}">Confirmed</span>
+                            </div>
+                            <h2 class="h4 mb-1" th:text="${room != null ? room.name : r.roomId}">Room</h2>
+                            <div class="room-meta">
+                                <span><i class="bi bi-calendar-event"></i><span th:text="${@fmt.date(r.checkIn)} + ' → ' + ${@fmt.date(r.checkOut)}">dates</span></span>
+                                <span><i class="bi bi-moon-stars"></i><span th:text="${@fmt.nights(r.nights)}">2 nights</span></span>
+                                <span><i class="bi bi-people"></i><span th:text="${r.guests} + (${r.guests} == 1 ? ' guest' : ' guests')">2 guests</span></span>
+                            </div>
+                            <div class="fw-semibold mt-2" th:text="${@fmt.money(r.totalPrice)}">LKR</div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                            <a class="btn btn-sm btn-outline-navy" th:href="@{/my-bookings/{id}(id=${r.id})}"><i class="bi bi-eye me-1"></i>View</a>
+                            <a class="btn btn-sm btn-outline-navy" th:if="${r.active and r.checkOut.isAfter(today)}" th:href="@{/my-bookings/{id}/edit(id=${r.id})}"><i class="bi bi-pencil me-1"></i>Edit</a>
+                            <form th:if="${r.active and r.checkOut.isAfter(today)}" th:action="@{/my-bookings/{id}/cancel(id=${r.id})}" method="post"
+                                  th:attr="data-confirm='Booking ' + ${r.id} + ' will be cancelled and the room released. This cannot be undone.'"
+                                  data-confirm-title="Cancel this booking?" data-confirm-button="Yes, cancel booking">
+                                <button class="btn btn-sm btn-ghost-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+                            </form>
+                            <form th:if="${!r.active}" th:action="@{/my-bookings/{id}/delete(id=${r.id})}" method="post"
+                                  th:attr="data-confirm='Cancelled booking ' + ${r.id} + ' will be permanently removed from your list.'"
+                                  data-confirm-title="Delete this booking?" data-confirm-button="Delete">
+                                <button class="btn btn-sm btn-ghost-danger" type="submit"><i class="bi bi-trash me-1"></i>Delete</button>
+                            </form>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="empty-state" th:if="${bookings.isEmpty()}">
+                    <i class="bi bi-calendar-heart"></i>
+                    <h2 class="h3 mt-3">No bookings yet</h2>
+                    <p class="text-muted-soft">When you book a room while signed in, it will appear here.</p>
+                    <a class="btn btn-gold" th:href="@{/rooms}">Find a room</a>
+                </div>
+            </div>
+
+            <!-- ============ profile summary ============ -->
+            <div class="col-lg-4">
+                <aside class="panel">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="avatar avatar-lg" th:text="${customer.initials}">NP</span>
+                        <div>
+                            <div class="font-serif h4 mb-0" th:text="${customer.fullName}">Name</div>
+                            <div class="small text-muted-soft mono" th:text="${customer.id}">C001</div>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2 small mb-4">
+                        <div><i class="bi bi-envelope me-2 text-gold"></i><span th:text="${customer.email}">email</span></div>
+                        <div><i class="bi bi-telephone me-2 text-gold"></i><span th:text="${customer.phone}">phone</span></div>
+                        <div><i class="bi bi-geo-alt me-2 text-gold"></i><span th:text="${customer.address}">address</span></div>
+                    </div>
+                    <a class="btn btn-outline-navy w-100" th:href="@{/account/profile}"><i class="bi bi-pencil me-1"></i>Edit my details</a>
+                </aside>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="mt-5"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

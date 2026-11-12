@@ -14,6 +14,7 @@ public class CustomerForm {
     private String fullName;
 
     @NotBlank(message = "Email is required.")
+    @Size(max = 120, message = "Email must be at most 120 characters.")
     @Email(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "Please enter a valid email address.")
     private String email;
 

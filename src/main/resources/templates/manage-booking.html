@@ -13,9 +13,8 @@
             <p class="lead-muted">Enter the booking reference from your confirmation and the email address you booked with.</p>
         </div>
 
-        <div class="alert alert-info d-flex gap-2" th:if="${info}"><i class="bi bi-info-circle"></i><span th:text="${info}">info</span></div>
-        <div class="alert alert-danger d-flex gap-2" th:if="${error}" role="alert"><i class="bi bi-exclamation-triangle-fill"></i><span th:text="${error}">error</span></div>
-        <div class="alert alert-success d-flex gap-2" th:if="${success}" role="status"><i class="bi bi-check-circle-fill"></i><span th:text="${success}">ok</span></div>
+        <div class="alert alert-danger d-flex gap-2" th:if="${lookupError}" role="alert"><i class="bi bi-exclamation-triangle-fill"></i><span th:text="${lookupError}">error</span></div>
+        <div class="alert alert-success d-flex gap-2" th:if="${lookupSuccess}" role="status"><i class="bi bi-check-circle-fill"></i><span th:text="${lookupSuccess}">ok</span></div>
 
         <form class="panel mb-4" th:action="@{/manage-booking}" method="post">
             <div class="row g-3 align-items-end">

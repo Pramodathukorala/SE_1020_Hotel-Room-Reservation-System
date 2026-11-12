@@ -151,6 +151,18 @@
             backdrop.classList.remove("is-open");
         });
 
+        /* ---------- show / hide password ---------- */
+        document.querySelectorAll("[data-password-toggle]").forEach((btn) => {
+            const input = document.getElementById(btn.dataset.passwordToggle);
+            if (!input) return;
+            btn.addEventListener("click", () => {
+                const show = input.type === "password";
+                input.type = show ? "text" : "password";
+                btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+                btn.querySelector("i").className = show ? "bi bi-eye-slash" : "bi bi-eye";
+            });
+        });
+
         /* ---------- auto-dismiss toasts ---------- */
         document.querySelectorAll(".toast-luxe").forEach((toast) => {
             const close = () => toast.remove();

@@ -1,9 +1,10 @@
 package com.hotel.reservation.model;
 
 /**
- * Life-cycle states of a reservation.
- * Each constant knows whether it occupies the room, so availability rules
- * do not need scattered if-statements throughout the code.
+ * The possible states of a booking: CONFIRMED or CANCELLED.
+ * Each value knows if it blocks the room (CONFIRMED = yes, CANCELLED = no),
+ * so the availability check simply asks the status.
+ * OOP - ENCAPSULATION: the fields are private, with getters.
  */
 public enum ReservationStatus {
     CONFIRMED("Confirmed", true),

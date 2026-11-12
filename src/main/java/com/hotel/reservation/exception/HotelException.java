@@ -1,11 +1,12 @@
 package com.hotel.reservation.exception;
 
 /**
- * Base class for all business errors in the application.
- * INHERITANCE: the more specific exceptions below extend this class,
- * so a controller can catch them all with one catch block when convenient.
+ * The PARENT class of all the application's own errors.
+ * OOP - INHERITANCE: HotelException extends Java's RuntimeException, and
+ *       ResourceNotFoundException, ValidationException and BookingConflictException extend HotelException.
+ * OOP - POLYMORPHISM: "catch (HotelException e)" catches all of these child exceptions.
  */
-public class HotelException extends RuntimeException {
+public class HotelException extends RuntimeException {   // OOP - INHERITANCE
 
     public HotelException(String message) {
         super(message);

@@ -6,23 +6,24 @@ Likely questions about this project, with short answers that point to the real c
 
 ## A. Demo script (about 5 minutes)
 
-1. **Start the app** (`mvn spring-boot:run` or Run in VS Code). Point out the start-up log lines: `First run: added 9 sample rooms...` the very first time, and `Loaded 9 record(s) from data\rooms.txt` on later runs.
+1. **Start the app** (`mvn spring-boot:run` or Run in VS Code). Point out the start-up log: `Empty database: added 9 sample rooms.` the very first time, and `Database contains 9 room(s)... - no sample data added.` on later runs.
 2. **Home page** → choose dates → **Search**. Explain: the listing shows only rooms that are free for *every* night (`ReservationService.findAvailableRooms`).
 3. Open a **Deluxe** room whose stay includes a Friday → **Check availability & price**. Show the per-night breakdown with the +10% weekend nights → explain polymorphism.
 4. **Continue to booking** → submit once with an invalid email to show validation → fix it → **Confirm**. Show the reference `RES-....`.
 5. Try to book the **same room and dates** again → "already booked" message (double booking prevented).
 6. Book the same room **starting on the previous check-out date** → it succeeds (check-out is exclusive).
 7. **Manage booking** → look up with reference + email → **Cancel** → book the original dates again → it works (cancelled bookings release the room).
-8. **Admin dashboard** → Rooms: add a room, edit it (change its type), try deleting a room that has reservations (refused), delete the new room. Customers: register, edit, delete.
-9. Open `data/reservations.txt` in VS Code to show the stored records. **Restart** the app and show that everything is still there.
-10. Run `mvn test` → 52 tests pass.
+8. **Register** a guest account and sign in, then open **My bookings**: edit a booking's dates (the total changes), cancel it, then delete it. Open `/admin/login` and sign in as the admin. Show that `/admin` redirects to the login page when signed out.
+9. **Admin dashboard** → Rooms: add a room, edit it (change its type), try deleting a room that has reservations (refused), delete the new room. Customers: register, edit, delete.
+10. Open **MySQL Workbench** (or the `mysql` client) and run `SELECT * FROM reservations;` to show the stored rows. **Restart** the app and show that everything is still there.
+11. Run `mvn test`: 63 tests pass (on an in-memory H2 database).
 
 ---
 
 ## B. OOP questions
 
 **Q: Where have you used inheritance?**
-`StandardRoom`, `DeluxeRoom` and `SuiteRoom` extend the abstract class `Room` (`model/`). They inherit the common fields and methods, such as `calculateStayCost()` and `canAccommodate()`, and add their own fields: `bedType`; `view`/`balcony`; `bedrooms`/`butlerService`. The file repositories also extend `AbstractFileRepository<T>`, and the exceptions extend `HotelException`.
+`StandardRoom`, `DeluxeRoom` and `SuiteRoom` extend the abstract class `Room` (`model/`). They inherit the common fields and methods, such as `calculateStayCost()` and `canAccommodate()`, and add their own fields: `bedType`; `view`/`balcony`; `bedrooms`/`butlerService`. The JDBC repositories also extend `AbstractJdbcRepository<T>`, and the exceptions extend `HotelException`.
 
 **Q: Show me polymorphism.**
 `Room.calculateNightlyRate(LocalDate)` is abstract and overridden in each subclass. `Room.calculateStayCost()` loops over the nights and calls `calculateNightlyRate()`. Java decides at runtime which subclass version runs. In `ReservationService.create()` the variable is declared as `Room`, yet a suite gets suite pricing. `getRoomFeatures()` is also overridden; each subclass calls `super.getRoomFeatures()` and adds its own items. See `ModelTest.polymorphicNightlyRates`.
@@ -49,7 +50,7 @@ Abstraction is about *what* is exposed: the abstract `Room` and the `DataReposit
 Composition: a `Reservation` *has a* `StayPeriod`, which is created for it and meaningless on its own. A `BookingForm` has a `CustomerForm`. Association: a `Reservation` refers to a `Customer` and a `Room` by their IDs, and those objects exist independently.
 
 **Q: How do enums help?**
-`ReservationStatus.blocksAvailability()` puts the rule "does this status occupy the room?" inside the enum. `Reservation.isActive()` simply calls it, with no string comparisons. `RoomType` restricts room categories to three valid values, and the room file loader uses it to choose the subclass.
+`ReservationStatus.blocksAvailability()` puts the rule "does this status occupy the room?" inside the enum. `Reservation.isActive()` simply calls it, with no string comparisons. `RoomType` restricts room categories to three valid values, and `JdbcRoomRepository` uses it to choose the subclass when reading a row.
 
 **Q: Why `BigDecimal` instead of `double`?**
 `double` cannot store values like 0.1 exactly, so money totals can drift (0.1 + 0.2 = 0.30000000000000004). `BigDecimal` is exact, and every amount is rounded with `setScale(2, RoundingMode.HALF_UP)`.
@@ -85,42 +86,91 @@ Room and customer exist; dates present; check-out after check-in; check-in not i
 
 ---
 
-## D. File handling questions
+## D. Database (MySQL) questions
 
-**Q: How is data stored?**
-In three text files in `data/`, one record per line, with fields separated by `|` (see the header line at the top of each file). Example:
-`R007|SUITE|301|Panorama Suite|...|58000.00|4|Free Wi-Fi;Living room;...|/images/rooms/suite-panorama.jpg|false|2|false`
+**Q: Which database do you use, and how does Java connect to it?**
+MySQL 8. Spring Boot creates a connection pool (HikariCP) from the settings in `application.properties` (`spring.datasource.url`, username and password). The repositories run SQL through Spring's `JdbcTemplate`. It is a thin layer over plain JDBC that opens and closes connections and converts `SQLException`s into Spring's `DataAccessException`s.
 
-**Q: When are the files read and written?**
-Each `File...Repository` reads its file once in its constructor (`AbstractFileRepository.load()`) into a `LinkedHashMap`. Every `save()` and `deleteById()` immediately rewrites the whole file (`writeFile()`).
+**Q: Why `JdbcTemplate` and not JPA/Hibernate?**
+Every SQL statement is visible in the code, so I can explain exactly what is sent to MySQL. JPA would also force annotations, no-argument constructors and setters onto the model classes, which would weaken their encapsulation.
 
-**Q: How do you rebuild the right subclass when loading rooms?**
-The second column holds the `RoomType`. `FileRoomRepository.fromFields()` switches on it and calls the `StandardRoom`, `DeluxeRoom` or `SuiteRoom` constructor with the type-specific columns. Test: `FilePersistenceTest.dataSurvivesARestart`.
+**Q: Show me your tables.**
+They are defined in `schema.sql`: `rooms`, `room_amenities`, `customers`, `reservations`.
+- Primary keys on `id`.
+- `UNIQUE` on `rooms.room_number` and `customers.email`.
+- Foreign keys from `reservations` to `customers` and `rooms`, and from `room_amenities` to `rooms` (`ON DELETE CASCADE`).
+- `CHECK` constraints such as `check_out > check_in` and `capacity BETWEEN 1 AND 10`.
 
-**Q: What if a user types `|` in a description?**
-`RecordCodec.encode()` escapes it as `\|`, and also `\` as `\\` and line breaks as `\n`. `decode()` reverses this. Test: `specialCharactersAreEscapedSafely`.
+**Q: How is inheritance stored in a relational database?**
+With single-table inheritance: all room types share the `rooms` table, and the `room_type` column (`STANDARD`, `DELUXE`, `SUITE`) records the subclass. Columns used by only one type (`bed_type`; `view_name`, `balcony`; `bedrooms`, `butler_service`) are `NULL` for the others. `JdbcRoomRepository.mapRow()` switches on `room_type` and calls the right subclass constructor, so a suite saved to MySQL comes back as a `SuiteRoom` object. Test: `DatabasePersistenceTest.dataSurvivesARestart`.
 
-**Q: How do you avoid corrupting the file?**
-The new content is written to `rooms.txt.tmp` first, then `Files.move(..., ATOMIC_MOVE)` replaces the real file in one step. If writing fails, the in-memory change is rolled back and a `StorageException` is shown as a friendly error page.
+**Q: Why is there a separate `room_amenities` table?**
+A room has many amenities. Storing a list in one column would break first normal form, so each amenity is one row, linked by `room_id`, with `sort_order` to keep the order. `loadDetails()` loads amenities for *all* rooms in **one** query instead of one query per room.
 
-**Q: What if the file contains a broken line?**
-That line is skipped with a log warning and the rest still loads. Before the file is ever rewritten, the original is copied to `rooms.txt.corrupt-<time>.bak`, so nothing is lost. A missing file just means "no records yet". Test: `malformedLinesAreSkippedAndTheOriginalFileIsBackedUp`.
+**Q: Walk me through saving a new reservation.**
+`ReservationService.create()` validates the rules, builds a `Reservation` and calls `reservationRepository.save()`. `AbstractJdbcRepository.save()` calls `existsById()`. The ID is new, so `JdbcReservationRepository.insert()` runs
+`INSERT INTO reservations (id, customer_id, room_id, check_in, ...) VALUES (?, ?, ?, ?, ...)`.
 
-**Q: How are IDs generated, and can they be duplicated?**
-`AbstractFileRepository.nextId()` finds the highest number for the prefix (`R`, `C`, `RES-`) and adds 1. Duplicate IDs found while loading are rejected as malformed.
+**Q: What is SQL injection and how do you prevent it?**
+It happens when user text is joined into an SQL string, so input like `'; DROP TABLE customers; --` becomes part of the command. Every query here uses `?` placeholders, and the driver sends the values separately from the SQL text. Test: `textWithQuotesAndSqlIsStoredSafely` stores exactly that text as an address, and the table is still there afterwards.
 
-**Q: Will sample data overwrite my records on restart?**
-No. `SampleDataInitializer` only seeds a file that does **not exist**, so deleted or edited records stay as they are.
+**Q: What is a transaction and where do you use one?**
+A group of statements that succeed or fail together. `JdbcRoomRepository.save()` is `@Transactional`: it updates the `rooms` row, deletes the old amenity rows and inserts the new ones. If anything fails, all of it is rolled back, so a room is never left without its amenities.
 
-**Q: Why not Java serialization (`ObjectOutputStream`)?**
-Binary files cannot be read or fixed by hand, break when a class changes, and are harder to explain. A text format is transparent and easy to demonstrate.
+**Q: If the service already checks for duplicates, why have UNIQUE and FOREIGN KEY constraints?**
+Defence in depth. The service gives friendly messages, and the database still guarantees integrity if a rule is bypassed, for example by a bug or by direct SQL. Test: `foreignKeyStopsDeletingARoomThatHasReservations` calls the repository directly and the database refuses. `GlobalControllerAdvice` turns such errors into a friendly 409 page.
+
+**Q: How are the tables created? Will restarting delete my data?**
+`spring.sql.init.mode=always` runs `schema.sql` at start-up. Every statement is `CREATE TABLE IF NOT EXISTS`, so existing tables and rows are left alone. The database itself is created by `createDatabaseIfNotExist=true` in the connection URL. `SampleDataInitializer` only adds sample rooms and customers when all tables are empty.
+
+**Q: How are IDs generated?**
+`AbstractJdbcRepository.nextId()` selects the existing IDs with the prefix (`SELECT id FROM rooms WHERE id LIKE 'R%'`), finds the highest number and adds one (`R010`). Readable IDs such as `RES-0007` are easier for guests than auto-increment numbers.
+
+**Q: Where is the password? Is it in GitHub?**
+No. `application.properties` reads `${DB_USERNAME}` and `${DB_PASSWORD}`, or an `application-local.properties` file that is listed in `.gitignore`.
+
+**Q: Your tests don't need MySQL. How?**
+They use H2, an in-memory SQL database, in MySQL compatibility mode, created from the same `schema.sql`. Each test gets a fresh database, so tests are fast, independent and never touch real data.
+
+**Q: What changed when you moved from text files to MySQL?**
+Only the repository implementations (the new `repository.jdbc` package), the configuration and the tests. The services, controllers and pages did not change, because services depend on the repository *interfaces*. This is information hiding in practice.
 
 ---
 
-## E. Architecture & Spring questions
+## E. Login & security questions
+
+**Q: How do guests and admins log in?**
+Guests register at `/register` and sign in at `/login` with their email and password. Admins sign in at `/admin/login` with a username. Admins are stored in their own table, `admins`. Guest logins are in `guest_accounts`, where the id is the same as the customer id. `AccountService.authenticateGuest()` and `authenticateAdmin()` check the password and return a `SessionUser`, which is stored in the HTTP session.
+
+**Q: How are passwords stored?**
+Never in plain text. `BCryptPasswordEncoder.encode()` makes a salted one-way hash (for example `$2a$10$...`). At sign-in, `encoder.matches(typed, storedHash)` hashes the typed password again with the stored salt and compares the results. Even the database administrator cannot read the passwords. Test: `registeringCreatesACustomerAndAHashedLogin`.
+
+**Q: How are the admin pages protected?**
+`AuthInterceptor`, registered in `WebConfig`, runs before every controller method. For `/admin/**` it checks that the session contains an admin `SessionUser`; otherwise it redirects to `/admin/login`. For `/my-bookings/**` and `/account/**` it requires a signed-in guest. A guest session is *not* an admin session (test `adminPagesNeedAnAdminLogin`).
+
+**Q: Can a guest open someone else's booking by changing the URL?**
+No. `ReservationService.findOwned()` checks that the reservation's `customerId` equals the signed-in guest's ID; otherwise it throws "not found" (404), so the page does not even reveal that the reference exists. A signed-in guest also always books under their own profile, because the server replaces any guest details sent in the form.
+
+**Q: Where is OOP in the login code?**
+`UserAccount` is abstract; `AdminAccount` and `GuestAccount` extend it and override `getRole()` and `getHomePage()` (polymorphism). The password hash is encapsulated: only `passwordMatches()` can use it. `Role` is an enum.
+
+**Q: What security measures did you add, and what is still missing?**
+In place:
+- BCrypt password hashes.
+- The same error message for an unknown user and a wrong password.
+- A new session ID at sign-in, to prevent session fixation.
+- Redirects after login only go to local paths, to prevent open redirects.
+- Parameterised SQL.
+- The database password is kept out of Git.
+
+Missing, with the fix: there is no CSRF protection and no limit on login attempts. Adding Spring Security would cover both.
+
+---
+
+## F. Architecture & Spring questions
 
 **Q: Explain the layers.**
-Controller (HTTP, forms, choosing a view) → Service (business rules) → Repository interface → File repository → text file. For example, `AdminRoomController.create()` → `RoomService.create()` → `RoomRepository.save()` → `AbstractFileRepository.writeFile()`.
+Controller (HTTP, forms, choosing a view) → Service (business rules) → Repository interface → JDBC repository → MySQL. For example, `AdminRoomController.create()` → `RoomService.create()` → `RoomRepository.save()` → `JdbcRoomRepository.insert()` → `INSERT INTO rooms ...`.
 
 **Q: What is dependency injection here?**
 Each class receives what it needs through its constructor, for example `RoomService(RoomRepository, ReservationRepository)`. Spring creates the objects (they are annotated `@Service`, `@Repository` and `@Controller`) and passes them in. Tests build the same objects by hand with `new`, in `TestHotel`.
@@ -135,13 +185,14 @@ A server-side template engine. Controllers put data into the `Model`, and templa
 So "today" can be fixed in tests (`TestHotel.CLOCK` = Monday 7 Jan 2030). That makes rules like "check-in cannot be in the past" and weekend pricing testable on any day.
 
 **Q: How are errors shown to the user?**
-Form errors appear next to the fields. Flash messages appear as toast notifications after redirects. `GlobalControllerAdvice` turns `ResourceNotFoundException` into a 404 page and `StorageException` into a 500 page, and `error.html` covers anything else. Stack traces are never shown (`server.error.include-stacktrace=never`).
+Form errors appear next to the fields. Flash messages appear as toast notifications after redirects. `GlobalControllerAdvice` turns `ResourceNotFoundException` into a 404 page, database constraint violations into a 409 page and database connection errors into a 500 page, and `error.html` covers anything else. Stack traces are never shown (`server.error.include-stacktrace=never`).
 
 ---
 
-## F. Limitations (be honest if asked)
-- No login: the admin area is open, so it is easy to demonstrate.
+## G. Limitations (be honest if asked)
+- Sign-in is session-based without Spring Security, so there is no CSRF protection and no lockout after repeated wrong passwords.
 - No online payment: payment is "at the hotel".
-- The whole file is rewritten on every change. That is fine for hundreds of records but not for millions, where a database would be the next step. Because services depend on interfaces, it could be added without changing them.
+- Searching is done in Java after loading the rows, which is simple and easy to explain. For very large data, filtering would move into SQL `WHERE` clauses and indexes.
 - A room with booking history cannot be deleted. The design choice is to mark it "under maintenance" instead, to keep old reservations valid.
+- MySQL must be installed, and its password supplied (environment variable or local file), before the app can run.
 - Prices are fixed per room type rule; there are no seasonal prices or discounts.

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My profile')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset">
+    <div class="container py-4" style="max-width:760px">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a th:href="@{/my-bookings}">My account</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Profile</li>
+            </ol>
+        </nav>
+        <span class="eyebrow">My account</span>
+        <h1 class="display-6 mb-4">My profile</h1>
+
+        <form class="panel" th:action="@{/account/profile}" th:object="${customerForm}" method="post" novalidate>
+            <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label" for="fullName">Full name</label>
+                    <input class="form-control" type="text" th:field="*{fullName}" th:errorclass="is-invalid" maxlength="80" autocomplete="name">
+                    <div class="invalid-feedback" th:errors="*{fullName}">error</div>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label" for="email">Email (used to sign in)</label>
+                    <input class="form-control" type="email" th:field="*{email}" th:errorclass="is-invalid" autocomplete="email">
+                    <div class="invalid-feedback" th:errors="*{email}">error</div>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label" for="phone">Phone</label>
+                    <input class="form-control" type="tel" th:field="*{phone}" th:errorclass="is-invalid" autocomplete="tel">
+                    <div class="invalid-feedback" th:errors="*{phone}">error</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="address">Address</label>
+                    <input class="form-control" type="text" th:field="*{address}" th:errorclass="is-invalid" maxlength="200" autocomplete="street-address">
+                    <div class="invalid-feedback" th:errors="*{address}">error</div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button class="btn btn-gold" type="submit"><i class="bi bi-check2 me-1"></i>Save changes</button>
+                <a class="btn btn-outline-navy" th:href="@{/my-bookings}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</main>
+
+<div class="mt-5"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

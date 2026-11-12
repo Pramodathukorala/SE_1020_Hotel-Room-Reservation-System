@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}"></head>
+<body>
+<main class="auth-shell">
+    <aside class="auth-visual" th:style="'background-image: url(' + @{/images/rooms/suite-panorama.jpg} + ')'">
+        <div>
+            <span class="eyebrow" style="color:var(--gold-soft)">Welcome back</span>
+            <h2 class="mb-3">Your stays, all in one place.</h2>
+            <p class="mb-0">Sign in to see your bookings, change your dates or cancel, and book faster with your saved details.</p>
+        </div>
+    </aside>
+
+    <section class="auth-panel">
+        <div class="auth-card">
+            <a class="brand" th:href="@{/}">
+                <span class="brand-mark">A</span>
+                <span><span class="brand-name">The Aurelia</span><span class="brand-sub">Boutique Hotel &amp; Spa</span></span>
+            </a>
+            <h1 class="display-6 mb-2">Sign in</h1>
+            <p class="text-muted-soft mb-4">Use the email address and password you registered with.</p>
+
+            <div class="alert alert-danger d-flex gap-2" th:if="${error}" role="alert"><i class="bi bi-exclamation-triangle-fill"></i><span th:text="${error}">error</span></div>
+            <div class="alert alert-success d-flex gap-2" th:if="${success}" role="status"><i class="bi bi-check-circle-fill"></i><span th:text="${success}">ok</span></div>
+
+            <form th:action="@{/login}" method="post">
+                <input type="hidden" name="next" th:value="${next}" th:if="${next != null}">
+                <div class="mb-3">
+                    <label class="form-label" for="email">Email address</label>
+                    <input class="form-control" type="email" id="email" name="email" th:value="${email}" autocomplete="email" required autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label" for="password">Password</label>
+                    <div class="password-field">
+                        <input class="form-control" type="password" id="password" name="password" autocomplete="current-password" required>
+                        <button class="toggle" type="button" data-password-toggle="password" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                    </div>
+                </div>
+                <button class="btn btn-gold btn-lg w-100" type="submit">Sign in</button>
+            </form>
+
+            <p class="auth-switch text-center mt-4 mb-2">New to The Aurelia? <a th:href="@{/register}">Create an account</a></p>
+            <p class="auth-switch text-center mb-0">Booked without an account? <a th:href="@{/manage-booking}">Find your booking</a></p>
+            <p class="text-center mt-4 mb-0"><a class="small" th:href="@{/}"><i class="bi bi-arrow-left me-1"></i>Back to the website</a></p>
+        </div>
+    </section>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

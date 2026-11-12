@@ -8,10 +8,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Immutable value object for a hotel stay (check-in inclusive, check-out exclusive).
+ * The dates of a stay: check-in day and check-out day.
+ * (The check-out day is not a night - a guest can arrive on the day another leaves.)
  *
- * Keeping the date rules in one small class means the overlap formula and the
- * night calculation are written once and reused by Room pricing and Reservation.
+ * OOP - ENCAPSULATION: both fields are private and final, so a StayPeriod can never change
+ *       after it is created (it is "immutable"). The constructor refuses wrong dates.
+ * The overlap rule and the night count are written once here and reused everywhere.
  */
 public final class StayPeriod {
 
@@ -59,7 +61,7 @@ public final class StayPeriod {
         return Collections.unmodifiableList(nights);
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides Object.equals() - two stays are equal if the dates are equal
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -70,12 +72,12 @@ public final class StayPeriod {
         return checkIn.equals(other.checkIn) && checkOut.equals(other.checkOut);
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides Object.hashCode() (must match equals)
     public int hashCode() {
         return Objects.hash(checkIn, checkOut);
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides Object.toString()
     public String toString() {
         return checkIn + " to " + checkOut;
     }

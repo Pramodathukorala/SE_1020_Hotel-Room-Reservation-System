@@ -1,0 +1,8 @@
+# Copy this file to "application-local.properties" (same folder) and enter your MySQL login.
+# application-local.properties is listed in .gitignore, so your password is never committed.
+spring.datasource.username=root
+spring.datasource.password=your-mysql-password
+
+# First administrator, created only when the "admins" table is empty
+hotel.admin.username=admin
+hotel.admin.password=choose-a-strong-password

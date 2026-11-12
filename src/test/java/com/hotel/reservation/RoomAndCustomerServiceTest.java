@@ -12,10 +12,8 @@ import com.hotel.reservation.model.StandardRoom;
 import com.hotel.reservation.model.SuiteRoom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 
 import static com.hotel.reservation.TestHotel.day;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,14 +22,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** CRUD operations for rooms and customers. */
 class RoomAndCustomerServiceTest {
 
-    @TempDir
-    Path dataDir;
-
     private TestHotel hotel;
 
     @BeforeEach
     void setUp() {
-        hotel = new TestHotel(dataDir);
+        hotel = new TestHotel();
     }
 
     // =============================================================== rooms

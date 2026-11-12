@@ -30,6 +30,7 @@ public class RoomService {
     private static final Comparator<Room> BY_TYPE_THEN_NUMBER =
             Comparator.comparing(Room::getType).thenComparing(Room::getRoomNumber);
 
+    // OOP - ABSTRACTION: interfaces only - this class does not know the data is in MySQL
     private final RoomRepository roomRepository;
     private final ReservationRepository reservationRepository;
 
@@ -119,8 +120,9 @@ public class RoomService {
     // ----------------------------------------------------------------- helpers
 
     /**
-     * Creates the correct Room subclass for the chosen type.
-     * The rest of the application only ever works with the abstract Room type.
+     * Creates the correct Room SUBCLASS for the chosen type.
+     * OOP - POLYMORPHISM: the method returns the parent type "Room", but the real object
+     * is a StandardRoom, DeluxeRoom or SuiteRoom. The rest of the program just uses "Room".
      */
     private Room buildRoom(String id, RoomForm form) {
         if (form.getType() == null) {
