@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Manage your booking')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset">
+    <div class="container py-5" style="max-width:880px">
+        <div class="text-center mb-4">
+            <span class="eyebrow">Your reservation</span>
+            <h1 class="display-6">Manage your booking</h1>
+            <p class="lead-muted">Enter the booking reference from your confirmation and the email address you booked with.</p>
+        </div>
+
+        <div class="alert alert-info d-flex gap-2" th:if="${info}"><i class="bi bi-info-circle"></i><span th:text="${info}">info</span></div>
+        <div class="alert alert-danger d-flex gap-2" th:if="${error}" role="alert"><i class="bi bi-exclamation-triangle-fill"></i><span th:text="${error}">error</span></div>
+        <div class="alert alert-success d-flex gap-2" th:if="${success}" role="status"><i class="bi bi-check-circle-fill"></i><span th:text="${success}">ok</span></div>
+
+        <form class="panel mb-4" th:action="@{/manage-booking}" method="post">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label" for="reference">Booking reference</label>
+                    <input class="form-control text-uppercase" type="text" id="reference" name="reference" th:value="${reference}" placeholder="RES-0001" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label" for="email">Email address</label>
+                    <input class="form-control" type="email" id="email" name="email" th:value="${email}" placeholder="you@example.com" required>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-gold w-100" type="submit">Find</button>
+                </div>
+            </div>
+        </form>
+
+        <article class="ticket" th:if="${details != null}" th:with="r=${details.reservation}, room=${details.room}">
+            <div class="ticket-head d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="small text-uppercase" style="letter-spacing:.18em;opacity:.7">Booking reference</div>
+                    <div class="ref" th:text="${r.id}">RES</div>
+                </div>
+                <span class="pill" th:classappend="${r.active} ? 'pill-confirmed' : 'pill-cancelled'" th:text="${r.status.displayName}">Confirmed</span>
+            </div>
+            <div class="ticket-body">
+                <div class="dl-grid">
+                    <div><div class="k">Room</div><div class="v" th:text="${room != null ? room.name : r.roomId}">Room</div></div>
+                    <div><div class="k">Check-in</div><div class="v" th:text="${@fmt.date(r.checkIn)}">date</div></div>
+                    <div><div class="k">Check-out</div><div class="v" th:text="${@fmt.date(r.checkOut)}">date</div></div>
+                    <div><div class="k">Guests</div><div class="v" th:text="${r.guests}">2</div></div>
+                    <div><div class="k">Total</div><div class="v" th:text="${@fmt.money(r.totalPrice)}">LKR</div></div>
+                </div>
+                <div class="ticket-divider"></div>
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                    <p class="small text-muted-soft mb-0">To change dates, please cancel and re-book, or contact reception.</p>
+                    <form th:if="${r.active}" th:action="@{/manage-booking/cancel}" method="post"
+                          data-confirm="This will cancel your reservation and release the room. This cannot be undone."
+                          data-confirm-title="Cancel this reservation?" data-confirm-button="Yes, cancel booking">
+                        <input type="hidden" name="reference" th:value="${r.id}">
+                        <input type="hidden" name="email" th:value="${email}">
+                        <button class="btn btn-ghost-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Cancel reservation</button>
+                    </form>
+                </div>
+            </div>
+        </article>
+    </div>
+</main>
+
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

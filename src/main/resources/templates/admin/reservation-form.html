@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${reservationId == null} ? 'New reservation' : 'Edit reservation')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('reservations')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb"><a th:href="@{/admin/reservations}">Reservations</a> / <span th:text="${reservationId == null} ? 'New' : ${reservationId}">New</span></div>
+                <h1 th:text="${reservationId == null} ? 'New reservation' : 'Edit ' + ${reservationId}">New reservation</h1>
+            </div>
+            <a class="btn btn-outline-navy btn-sm" th:href="${reservationId == null} ? @{/admin/reservations} : @{/admin/reservations/{id}(id=${reservationId})}"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        </header>
+
+        <div class="admin-content">
+            <form th:action="${reservationId == null} ? @{/admin/reservations} : @{/admin/reservations/{id}(id=${reservationId})}"
+                  th:object="${reservationForm}" method="post" novalidate>
+                <div class="row g-4">
+                    <div class="col-xl-7">
+                        <section class="panel" data-date-range>
+                            <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label" for="customerId">Customer</label>
+                                    <select class="form-select" th:field="*{customerId}" th:errorclass="is-invalid" th:disabled="${reservationId != null}">
+                                        <option value="">Choose a customer...</option>
+                                        <option th:each="c : ${customers}" th:value="${c.id}" th:text="${c.fullName} + ' · ' + ${c.email} + ' (' + ${c.id} + ')'">Customer</option>
+                                    </select>
+                                    <input type="hidden" name="customerId" th:if="${reservationId != null}" th:value="*{customerId}">
+                                    <div class="invalid-feedback" th:errors="*{customerId}">error</div>
+                                    <div class="form-text" th:if="${reservationId == null}">Not registered yet? <a th:href="@{/admin/customers/new}">Register a customer</a> first.</div>
+                                    <div class="form-text" th:if="${reservationId != null}">The guest of an existing reservation cannot be changed.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="roomId">Room</label>
+                                    <select class="form-select" th:field="*{roomId}" th:errorclass="is-invalid">
+                                        <option value="">Choose a room...</option>
+                                        <option th:each="room : ${rooms}" th:value="${room.id}"
+                                                th:text="${room.roomNumber} + ' · ' + ${room.name} + ' (' + ${room.type.displayName} + ', up to ' + ${room.capacity} + ' guests, ' + ${@fmt.money(room.basePrice)} + ')' + (${room.underMaintenance} ? ' - MAINTENANCE' : '')">Room</option>
+                                    </select>
+                                    <div class="invalid-feedback" th:errors="*{roomId}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="checkIn">Check-in</label>
+                                    <input class="form-control" type="date" th:field="*{checkIn}" th:errorclass="is-invalid" data-checkin>
+                                    <div class="invalid-feedback" th:errors="*{checkIn}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="checkOut">Check-out</label>
+                                    <input class="form-control" type="date" th:field="*{checkOut}" th:errorclass="is-invalid" data-checkout>
+                                    <div class="invalid-feedback" th:errors="*{checkOut}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="guests">Guests</label>
+                                    <input class="form-control" type="number" min="1" max="10" th:field="*{guests}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:errors="*{guests}">error</div>
+                                </div>
+                            </div>
+                            <p class="small text-muted-soft mt-3 mb-0"><i class="bi bi-moon-stars me-1"></i><span data-nights-output>Select dates</span> · availability and the total are re-checked when you save.</p>
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-gold" type="submit"><i class="bi bi-check2 me-1"></i><span th:text="${reservationId == null} ? 'Create reservation' : 'Save changes'">Save</span></button>
+                                <a class="btn btn-outline-navy" th:href="@{/admin/reservations}">Cancel</a>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="col-xl-5">
+                        <section class="panel" th:if="${quote != null}">
+                            <div class="fieldset-title">Price check</div>
+                            <div class="d-flex gap-3 align-items-center mb-3">
+                                <img th:src="@{${quote.room.imageUrl}}" th:alt="${quote.room.name}" class="rounded-3" style="width:88px;height:66px;object-fit:cover">
+                                <div>
+                                    <div class="fw-medium" th:text="${quote.room.roomNumber} + ' · ' + ${quote.room.name}">Room</div>
+                                    <div class="small text-muted-soft" th:text="${quote.room.pricingNote}">note</div>
+                                </div>
+                            </div>
+                            <div class="availability mb-3" th:classappend="${quote.available} ? 'ok' : 'no'">
+                                <i class="bi" th:classappend="${quote.available} ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'"></i>
+                                <span th:text="${quote.message}">message</span>
+                            </div>
+                            <th:block th:if="${quote.stay != null}">
+                                <div class="night-list">
+                                    <div class="summary-line" th:each="entry : ${quote.nightlyRates}">
+                                        <span class="k" th:text="${@fmt.date(entry.key)}">date</span><span th:text="${@fmt.money(entry.value)}">LKR</span>
+                                    </div>
+                                </div>
+                                <div class="summary-total"><span class="k" th:text="'Total · ' + ${@fmt.nights(quote.nights())}">Total</span><span class="v" th:text="${@fmt.money(quote.total)}">LKR</span></div>
+                            </th:block>
+                        </section>
+                        <section class="panel" th:if="${quote == null}">
+                            <div class="fieldset-title">Booking rules</div>
+                            <ul class="small text-muted-soft mb-0 ps-3">
+                                <li>Check-out must be after check-in (max 30 nights).</li>
+                                <li>Guests cannot exceed the room's capacity.</li>
+                                <li>Rooms under maintenance cannot be booked.</li>
+                                <li>Overlapping confirmed bookings are rejected. A guest may arrive on the day another leaves.</li>
+                                <li>The total is calculated by the room type's pricing rule.</li>
+                            </ul>
+                        </section>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

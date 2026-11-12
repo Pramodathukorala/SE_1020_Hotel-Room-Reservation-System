@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Reservation ' + ${details.reservation.id})}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell" th:with="r=${details.reservation}, c=${details.customer}, room=${details.room}">
+    <aside th:replace="~{fragments/admin :: sidebar('reservations')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb"><a th:href="@{/admin/reservations}">Reservations</a> / <span th:text="${r.id}">RES</span></div>
+                <h1 class="d-flex align-items-center gap-3 flex-wrap">
+                    <span th:text="${r.id}">RES</span>
+                    <span class="pill" th:classappend="${r.active} ? 'pill-confirmed' : 'pill-cancelled'" th:text="${r.status.displayName}">Confirmed</span>
+                </h1>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-navy btn-sm" th:if="${r.active}" th:href="@{/admin/reservations/{id}/edit(id=${r.id})}"><i class="bi bi-pencil me-1"></i>Edit</a>
+                <form th:if="${r.active}" th:action="@{/admin/reservations/{id}/cancel(id=${r.id})}" method="post"
+                      th:attr="data-confirm='Reservation ' + ${r.id} + ' will be cancelled and the room released for those dates.'"
+                      data-confirm-title="Cancel this reservation?" data-confirm-button="Cancel reservation">
+                    <button class="btn btn-ghost-danger btn-sm" type="submit"><i class="bi bi-x-circle me-1"></i>Cancel reservation</button>
+                </form>
+                <form th:if="${!r.active}" th:action="@{/admin/reservations/{id}/delete(id=${r.id})}" method="post"
+                      th:attr="data-confirm='Reservation ' + ${r.id} + ' will be permanently deleted.'"
+                      data-confirm-title="Delete this reservation?" data-confirm-button="Delete permanently">
+                    <button class="btn btn-ghost-danger btn-sm" type="submit"><i class="bi bi-trash me-1"></i>Delete</button>
+                </form>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <div class="row g-4">
+                <div class="col-xl-8">
+                    <section class="panel mb-4">
+                        <div class="fieldset-title">Stay</div>
+                        <div class="dl-grid">
+                            <div><div class="k">Check-in</div><div class="v" th:text="${@fmt.date(r.checkIn)}">date</div></div>
+                            <div><div class="k">Check-out</div><div class="v" th:text="${@fmt.date(r.checkOut)}">date</div></div>
+                            <div><div class="k">Nights</div><div class="v" th:text="${r.nights}">2</div></div>
+                            <div><div class="k">Guests</div><div class="v" th:text="${r.guests}">2</div></div>
+                            <div><div class="k">Total price</div><div class="v" th:text="${@fmt.money(r.totalPrice)}">LKR</div></div>
+                            <div><div class="k">Booked on</div><div class="v" th:text="${@fmt.dateTime(r.createdAt)}">date</div></div>
+                        </div>
+                    </section>
+
+                    <section class="panel" th:if="${room != null}">
+                        <div class="fieldset-title">Room</div>
+                        <div class="d-flex flex-column flex-sm-row gap-3">
+                            <img th:src="@{${room.imageUrl}}" th:alt="${room.name}" class="rounded-3" style="width:180px;height:130px;object-fit:cover">
+                            <div>
+                                <div class="eyebrow mb-1" th:text="${room.type.displayName} + ' · Room ' + ${room.roomNumber}">Suite</div>
+                                <h2 class="h3" th:text="${room.name}">Room</h2>
+                                <p class="small text-muted-soft mb-2" th:text="${room.pricingNote}">note</p>
+                                <div class="amenity-chips">
+                                    <span class="chip" th:each="f : ${room.roomFeatures}"><i class="bi bi-check2"></i><span th:text="${f}">f</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="alert alert-warning" th:if="${room == null}">The room <span th:text="${r.roomId}"></span> linked to this reservation no longer exists.</div>
+                </div>
+
+                <div class="col-xl-4">
+                    <section class="panel" th:if="${c != null}">
+                        <div class="fieldset-title">Guest</div>
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <span class="avatar" th:text="${c.initials}">NP</span>
+                            <div><a class="fw-medium" th:href="@{/admin/customers/{id}(id=${c.id})}" th:text="${c.fullName}">Name</a><div class="small text-muted-soft mono" th:text="${c.id}">C001</div></div>
+                        </div>
+                        <div class="d-grid gap-2 small">
+                            <div><i class="bi bi-envelope me-2 text-gold"></i><span th:text="${c.email}">email</span></div>
+                            <div><i class="bi bi-telephone me-2 text-gold"></i><span th:text="${c.phone}">phone</span></div>
+                            <div><i class="bi bi-geo-alt me-2 text-gold"></i><span th:text="${c.address}">address</span></div>
+                        </div>
+                    </section>
+                    <div class="alert alert-warning" th:if="${c == null}">The customer <span th:text="${r.customerId}"></span> linked to this reservation no longer exists.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${roomId == null} ? 'Add room' : 'Edit room')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('rooms')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb"><a th:href="@{/admin/rooms}">Rooms</a> / <span th:text="${roomId == null} ? 'New' : ${roomId}">New</span></div>
+                <h1 th:text="${roomId == null} ? 'Add a new room' : 'Edit room ' + ${roomForm.roomNumber}">Add room</h1>
+            </div>
+            <a class="btn btn-outline-navy btn-sm" th:href="@{/admin/rooms}"><i class="bi bi-arrow-left me-1"></i>Back to rooms</a>
+        </header>
+
+        <div class="admin-content">
+            <form th:action="${roomId == null} ? @{/admin/rooms} : @{/admin/rooms/{id}(id=${roomId})}"
+                  th:object="${roomForm}" method="post" novalidate>
+                <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-xl-8">
+                        <section class="panel mb-4">
+                            <div class="fieldset-title">Room details</div>
+                            <div class="row g-3">
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="roomNumber">Room number</label>
+                                    <input class="form-control" type="text" th:field="*{roomNumber}" th:errorclass="is-invalid" placeholder="e.g. 105" maxlength="10">
+                                    <div class="invalid-feedback" th:errors="*{roomNumber}">error</div>
+                                </div>
+                                <div class="col-sm-8">
+                                    <label class="form-label" for="name">Display name</label>
+                                    <input class="form-control" type="text" th:field="*{name}" th:errorclass="is-invalid" placeholder="e.g. Garden Standard" maxlength="80">
+                                    <div class="invalid-feedback" th:errors="*{name}">error</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="description">Description</label>
+                                    <textarea class="form-control" rows="3" th:field="*{description}" th:errorclass="is-invalid" maxlength="1000"></textarea>
+                                    <div class="invalid-feedback" th:errors="*{description}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="type">Room type</label>
+                                    <select class="form-select" th:field="*{type}" th:errorclass="is-invalid" data-type-select>
+                                        <option th:each="t : ${roomTypes}" th:value="${t}" th:text="${t.displayName}">Suite</option>
+                                    </select>
+                                    <div class="invalid-feedback" th:errors="*{type}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="basePrice">Price per night (LKR)</label>
+                                    <input class="form-control" type="number" step="0.01" min="0.01" th:field="*{basePrice}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:errors="*{basePrice}">error</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label" for="capacity">Capacity (guests)</label>
+                                    <input class="form-control" type="number" min="1" max="10" th:field="*{capacity}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:errors="*{capacity}">error</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="amenities">Amenities</label>
+                                    <input class="form-control" type="text" th:field="*{amenities}" th:errorclass="is-invalid" placeholder="Free Wi-Fi, Air conditioning, Mini bar">
+                                    <div class="form-text">Separate amenities with commas.</div>
+                                    <div class="invalid-feedback" th:errors="*{amenities}">error</div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- subclass-specific fields: only the group for the chosen type is shown (see app.js) -->
+                        <section class="panel">
+                            <div class="fieldset-title">Type-specific details</div>
+                            <div class="row g-3" data-type-fields="STANDARD">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="bedType">Bed type</label>
+                                    <select class="form-select" th:field="*{bedType}">
+                                        <option value="Queen">Queen</option>
+                                        <option value="King">King</option>
+                                        <option value="Twin">Twin</option>
+                                        <option value="Double">Double</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-6 small text-muted-soft d-flex align-items-end">Standard rooms are charged the same rate every night.</div>
+                            </div>
+                            <div class="row g-3" data-type-fields="DELUXE">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="view">View</label>
+                                    <input class="form-control" type="text" th:field="*{view}" placeholder="Garden, Ocean, City">
+                                </div>
+                                <div class="col-sm-6 d-flex align-items-end">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" th:field="*{balcony}">
+                                        <label class="form-check-label" th:for="${#ids.prev('balcony')}">Private balcony</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 small text-muted-soft">Deluxe rooms add 10% on Friday and Saturday nights.</div>
+                            </div>
+                            <div class="row g-3" data-type-fields="SUITE">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="bedrooms">Bedrooms</label>
+                                    <input class="form-control" type="number" min="1" max="4" th:field="*{bedrooms}">
+                                </div>
+                                <div class="col-sm-6 d-flex align-items-end">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" th:field="*{butlerService}">
+                                        <label class="form-check-label" th:for="${#ids.prev('butlerService')}">Butler service (+LKR 5,000 / night)</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 small text-muted-soft">Suites add 15% on Friday and Saturday nights.</div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="col-xl-4">
+                        <section class="panel mb-4">
+                            <div class="fieldset-title">Photo</div>
+                            <div class="image-preview mb-3">
+                                <img th:src="@{${#strings.isEmpty(roomForm.imageUrl) ? '/images/fallback.svg' : roomForm.imageUrl}}" alt="Room photo preview" data-image-preview>
+                            </div>
+                            <label class="form-label" for="imageUrl">Image path or URL</label>
+                            <input class="form-control mb-2" type="text" th:field="*{imageUrl}" th:errorclass="is-invalid" placeholder="/images/rooms/..." data-image-input>
+                            <div class="invalid-feedback" th:errors="*{imageUrl}">error</div>
+                            <div class="form-text mb-2">Choose a bundled photo:</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="p-0 border-0 bg-transparent" th:each="img : ${imageOptions}" th:attr="data-image-pick=${img.key}" th:title="${img.value}">
+                                    <img th:src="@{${img.key}}" th:alt="${img.value}" style="width:56px;height:42px;object-fit:cover;border-radius:8px">
+                                </button>
+                            </div>
+                        </section>
+
+                        <section class="panel mb-4">
+                            <div class="fieldset-title">Availability</div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" th:field="*{underMaintenance}">
+                                <label class="form-check-label" th:for="${#ids.prev('underMaintenance')}">Under maintenance</label>
+                            </div>
+                            <p class="small text-muted-soft mt-2 mb-0">Rooms under maintenance are hidden from guests and cannot be booked. Existing bookings are kept.</p>
+                        </section>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-gold btn-lg" type="submit"><i class="bi bi-check2 me-1"></i><span th:text="${roomId == null} ? 'Add room' : 'Save changes'">Save</span></button>
+                            <a class="btn btn-outline-navy" th:href="@{/admin/rooms}">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

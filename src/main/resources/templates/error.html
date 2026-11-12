@@ -1,1 +1,19 @@
-<!doctype html><html lang="en" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{fragments :: head}"></head><body><header th:replace="~{fragments :: header}"></header><main><section class="page-heading container"><span class="eyebrow">LET’S TAKE ANOTHER LOOK</span><h1>A detail needs your attention.</h1><p>Your request could not be completed.</p></section><section class="container narrow"><div class="panel"><p class="notice" role="alert" th:text="${message ?: 'The page or action could not be found. Please return to the hotel desk.'}"></p><div class="form-actions"><button class="button" type="button" data-back>Return to form</button><a href="/">Back to Aurelia</a></div></div></section></main><footer th:replace="~{fragments :: footer}"></footer></body></html>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Something went wrong')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+<main class="page-offset">
+    <div class="container py-5 text-center" style="max-width:640px">
+        <div class="font-serif text-gold" style="font-size:5.5rem;line-height:1" th:text="${status != null ? status : 'Oops'}">404</div>
+        <h1 class="display-6 mb-3" th:text="${title != null ? title : (error != null ? error : 'Something went wrong')}">Something went wrong</h1>
+        <p class="lead-muted mb-4" th:text="${message != null and message != '' and message != 'No message available' ? message : 'The page you were looking for could not be shown.'}">message</p>
+        <div class="d-flex justify-content-center gap-2">
+            <a class="btn btn-gold" th:href="@{/}">Back to home</a>
+            <a class="btn btn-outline-navy" th:href="@{/rooms}">Browse rooms</a>
+        </div>
+    </div>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

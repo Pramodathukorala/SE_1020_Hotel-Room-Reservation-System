@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Customers · Admin')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('customers')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb">Admin / Customers</div>
+                <h1>Customer management</h1>
+            </div>
+            <a class="btn btn-gold btn-sm" th:href="@{/admin/customers/new}"><i class="bi bi-person-plus me-1"></i>Register customer</a>
+        </header>
+
+        <div class="admin-content">
+            <section class="table-card">
+                <div class="table-toolbar">
+                    <form class="d-flex flex-wrap gap-2 flex-fill" th:action="@{/admin/customers}" method="get" role="search">
+                        <div class="search-input flex-fill" style="min-width:220px;max-width:420px">
+                            <i class="bi bi-search"></i>
+                            <label class="visually-hidden" for="cust-q">Search customers</label>
+                            <input class="form-control" type="search" id="cust-q" name="q" th:value="${q}" placeholder="ID, name, email or phone">
+                        </div>
+                        <button class="btn btn-navy" type="submit">Search</button>
+                        <a class="btn btn-outline-navy" th:href="@{/admin/customers}" th:if="${q != null and q != ''}">Clear</a>
+                    </form>
+                    <span class="small text-muted-soft"><span th:text="${customers.size()}">0</span> of <span th:text="${totalCustomers}">0</span> customers</span>
+                </div>
+
+                <div class="table-responsive" th:if="${!customers.isEmpty()}">
+                    <table class="table table-luxe">
+                        <thead>
+                        <tr><th scope="col">Customer</th><th scope="col">Email</th><th scope="col">Phone</th><th scope="col">Address</th><th scope="col" class="text-end">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${customers}">
+                            <td>
+                                <a class="d-flex align-items-center gap-3 text-reset" th:href="@{/admin/customers/{id}(id=${c.id})}">
+                                    <span class="avatar" th:text="${c.initials}">NP</span>
+                                    <span><span class="d-block fw-medium" th:text="${c.fullName}">Name</span><span class="small text-muted-soft mono" th:text="${c.id}">C001</span></span>
+                                </a>
+                            </td>
+                            <td><a th:href="'mailto:' + ${c.email}" th:text="${c.email}">email</a></td>
+                            <td class="text-nowrap" th:text="${c.phone}">phone</td>
+                            <td class="small text-muted-soft" th:text="${c.address}">address</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/customers/{id}(id=${c.id})}" title="View profile">
+                                    <i class="bi bi-person-vcard"></i><span class="visually-hidden" th:text="'View ' + ${c.fullName}">View</span></a>
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/reservations/new(customerId=${c.id})}" title="New reservation">
+                                    <i class="bi bi-calendar-plus"></i><span class="visually-hidden">New reservation</span></a>
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/customers/{id}/edit(id=${c.id})}" title="Edit">
+                                    <i class="bi bi-pencil"></i><span class="visually-hidden" th:text="'Edit ' + ${c.fullName}">Edit</span></a>
+                                <form class="d-inline" th:action="@{/admin/customers/{id}/delete(id=${c.id})}" method="post"
+                                      th:attr="data-confirm=${c.fullName} + ' (' + ${c.id} + ') will be permanently deleted.'"
+                                      data-confirm-title="Delete this customer?" data-confirm-button="Delete customer">
+                                    <button class="btn btn-icon btn-ghost-danger" type="submit" title="Delete">
+                                        <i class="bi bi-trash"></i><span class="visually-hidden" th:text="'Delete ' + ${c.fullName}">Delete</span></button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-5 text-center text-muted-soft" th:if="${customers.isEmpty()}">
+                    <i class="bi bi-people fs-2 text-gold"></i>
+                    <p class="mt-2 mb-3">No customers found.</p>
+                    <a class="btn btn-sm btn-gold" th:href="@{/admin/customers/new}">Register a customer</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

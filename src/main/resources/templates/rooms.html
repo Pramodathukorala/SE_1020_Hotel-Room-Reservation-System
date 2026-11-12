@@ -1,1 +1,115 @@
-<!doctype html><html lang="en" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{fragments :: head}"></head><body><header th:replace="~{fragments :: header}"></header><main><section class="page-heading container"><span class="eyebrow">THE ROOM COLLECTION</span><h1>Your own little escape.</h1><p>Thoughtfully designed spaces for unhurried days and restful nights.</p></section><section class="container"><form action="/rooms" class="filter-panel"><div><label for="q">Search rooms</label><input id="q" name="q" placeholder="Room number or description" th:value="${q}"></div><div><label for="category">Category</label><select id="category" name="category"><option value="">All categories</option><option th:each="c : ${ {'STANDARD','DELUXE','SUITE'} }" th:value="${c}" th:text="${c}" th:selected="${c == category}"></option></select></div><div><label for="in">Arrival</label><input id="in" name="in" type="date" th:value="${in}" th:min="${today}"></div><div><label for="out">Departure</label><input id="out" name="out" type="date" th:value="${out}" th:min="${today.plusDays(1)}"></div><button class="button">Find rooms</button><a href="/rooms">Reset</a></form><div class="section-top"><p th:text="|${#lists.size(rooms)} considered spaces|"></p><small>Rates in USD per night</small></div><div class="room-grid"><article class="room-card" th:each="room : ${rooms}"><a th:href="@{/rooms/{id}(id=${room.id})}" class="room-photo" th:classappend="${room.category.toLowerCase()}"><span class="pill" th:text="${room.category}"></span></a><div class="room-body"><div class="room-meta"><span th:text="|ROOM ${room.number}|"></span><span th:text="|Up to ${room.capacity} guests|"></span></div><h3><a th:href="@{/rooms/{id}(id=${room.id})}" th:text="|${#strings.capitalize(#strings.toLowerCase(room.category))} retreat|"></a></h3><p th:text="${room.description}"></p><div class="card-bottom"><div><strong th:text="|$${room.calculateNightlyRate()}|"></strong><small> / night</small></div><a class="text-link" th:href="@{/rooms/{id}(id=${room.id})}">Explore room ↗</a></div></div></article></div><div class="empty" th:if="${#lists.isEmpty(rooms)}"><h3>No rooms match your search.</h3><p>Try different dates or another room category.</p><a href="/rooms" class="button">View all rooms</a></div></section></main><footer th:replace="~{fragments :: footer}"></footer></body></html>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rooms & Suites')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(true)}"></nav>
+
+<header class="page-hero" th:style="'background-image: url(' + @{/images/rooms/deluxe-terrace.jpg} + ')'">
+    <div class="container">
+        <span class="eyebrow">Stay with us</span>
+        <h1 class="display-5 mb-2">Rooms &amp; Suites</h1>
+        <p class="mb-0" style="max-width:560px">Choose your dates to see only the rooms that are free for every night of your stay.</p>
+    </div>
+</header>
+
+<main id="main" class="section-sm">
+    <div class="container">
+        <!-- ============ filters ============ -->
+        <form class="filter-bar mb-4" th:action="@{/rooms}" method="get" data-date-range aria-label="Filter rooms">
+            <div class="row g-3 align-items-end">
+                <div class="col-6 col-lg-2">
+                    <label class="form-label" for="f-in">Check-in</label>
+                    <input class="form-control" type="date" id="f-in" name="checkIn" th:value="${checkIn}" th:min="${today}" data-checkin>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label" for="f-out">Check-out</label>
+                    <input class="form-control" type="date" id="f-out" name="checkOut" th:value="${checkOut}" th:min="${today}" data-checkout>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label" for="f-guests">Guests</label>
+                    <select class="form-select" id="f-guests" name="guests">
+                        <option value="">Any</option>
+                        <option th:each="n : ${#numbers.sequence(1, 6)}" th:value="${n}" th:text="${n}" th:selected="${guests == n}">2</option>
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label" for="f-price">Max price / night</label>
+                    <select class="form-select" id="f-price" name="maxPrice">
+                        <option value="">Any price</option>
+                        <option th:each="p : ${ {20000, 30000, 40000, 60000} }" th:value="${p}"
+                                th:text="'LKR ' + ${#numbers.formatInteger(p, 1, 'COMMA')}"
+                                th:selected="${maxPrice != null and maxPrice.intValue() == p}">LKR 30,000</option>
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label" for="f-sort">Sort by</label>
+                    <select class="form-select" id="f-sort" name="sort">
+                        <option value="">Recommended</option>
+                        <option value="price-asc" th:selected="${sort == 'price-asc'}">Price: low to high</option>
+                        <option value="price-desc" th:selected="${sort == 'price-desc'}">Price: high to low</option>
+                        <option value="capacity" th:selected="${sort == 'capacity'}">Most spacious</option>
+                    </select>
+                </div>
+                <div class="col-6 col-lg-2 d-flex gap-2">
+                    <input type="hidden" name="type" th:value="${type}">
+                    <button class="btn btn-gold flex-fill" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+                </div>
+            </div>
+            <div class="row g-3 mt-1 align-items-center">
+                <div class="col-lg-6">
+                    <label class="visually-hidden" for="f-q">Keyword</label>
+                    <div class="search-input">
+                        <i class="bi bi-search"></i>
+                        <input class="form-control" type="search" id="f-q" name="q" th:value="${q}" placeholder="Search by name, amenity or room number">
+                    </div>
+                </div>
+                <div class="col-lg-6 text-lg-end">
+                    <a class="small" th:href="@{/rooms}"><i class="bi bi-x-circle me-1"></i>Clear all filters</a>
+                </div>
+            </div>
+        </form>
+
+        <!-- type tabs keep the other filters -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <nav class="type-tabs" aria-label="Room type">
+                <a th:href="@{/rooms(checkIn=${checkIn},checkOut=${checkOut},guests=${guests},maxPrice=${maxPrice},q=${q},sort=${sort})}"
+                   th:classappend="${type == null} ? 'active'">All rooms</a>
+                <a th:each="t : ${roomTypes}" th:text="${t.displayName}"
+                   th:href="@{/rooms(type=${t},checkIn=${checkIn},checkOut=${checkOut},guests=${guests},maxPrice=${maxPrice},q=${q},sort=${sort})}"
+                   th:classappend="${type == t} ? 'active'">Suite</a>
+            </nav>
+            <p class="mb-0 text-muted-soft" aria-live="polite">
+                <strong class="text-dark" th:text="${rooms.size()}">0</strong>
+                <span th:text="${rooms.size() == 1} ? 'room' : 'rooms'">rooms</span>
+                <span th:if="${datesSearched}" th:text="'available ' + ${@fmt.shortDate(checkIn)} + ' – ' + ${@fmt.shortDate(checkOut)}"></span>
+            </p>
+        </div>
+
+        <div class="alert alert-danger d-flex gap-2" th:if="${dateError}" role="alert">
+            <i class="bi bi-calendar-x"></i><span th:text="${dateError} + ' Showing all rooms instead.'">Error</span>
+        </div>
+        <div class="alert alert-success d-flex gap-2" th:if="${datesSearched and !rooms.isEmpty()}">
+            <i class="bi bi-check2-circle"></i>
+            <span>Every room below is free for your whole stay. Prices for your dates are calculated on the next page.</span>
+        </div>
+
+        <div class="row g-4" th:if="${!rooms.isEmpty()}">
+            <div class="col-md-6 col-xl-4" th:each="room : ${rooms}">
+                <article th:replace="~{fragments/layout :: roomCard(${room}, ${datesSearched ? checkIn : null}, ${datesSearched ? checkOut : null}, ${guests})}"></article>
+            </div>
+        </div>
+
+        <div class="empty-state" th:if="${rooms.isEmpty()}">
+            <i class="bi bi-calendar-x"></i>
+            <h2 class="h3 mt-3">No rooms match your search</h2>
+            <p class="text-muted-soft">Try different dates, fewer guests or a higher price limit.</p>
+            <a class="btn btn-outline-navy" th:href="@{/rooms}">Show all rooms</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

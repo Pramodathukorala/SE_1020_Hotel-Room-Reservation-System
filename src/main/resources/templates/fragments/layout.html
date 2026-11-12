@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ============ <head> contents shared by every page ============ -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="The Aurelia - a boutique hotel and spa. Browse rooms and book your stay online.">
+    <title th:text="${title} + ' · The Aurelia'">The Aurelia</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/images/favicon.svg}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap-icons/bootstrap-icons.min.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<!-- ============ public navigation bar ============ -->
+<nav th:fragment="navbar(transparent)" class="site-nav navbar navbar-expand-lg"
+     th:classappend="${transparent} ? 'is-transparent'" aria-label="Main navigation">
+    <div class="container">
+        <a class="brand" th:href="@{/}" aria-label="The Aurelia home">
+            <span class="brand-mark">A</span>
+            <span><span class="brand-name">The Aurelia</span><span class="brand-sub">Boutique Hotel &amp; Spa</span></span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+                <li class="nav-item"><a class="nav-link" th:classappend="${currentUri == '/'} ? 'active'" th:href="@{/}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/rooms')} ? 'active'" th:href="@{/rooms}">Rooms &amp; Suites</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/#experiences}">Experiences</a></li>
+                <li class="nav-item"><a class="nav-link" th:classappend="${currentUri != null and #strings.startsWith(currentUri, '/manage-booking')} ? 'active'" th:href="@{/manage-booking}">Manage Booking</a></li>
+                <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="btn btn-sm btn-outline-navy" th:href="@{/admin}"><i class="bi bi-speedometer2 me-1"></i>Admin</a></li>
+                <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="btn btn-sm btn-gold" th:href="@{/rooms}">Book a Stay</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- ============ flash messages (after redirects) ============ -->
+<div th:fragment="toasts" class="toast-stack" aria-live="polite">
+    <div th:if="${success}" class="toast-luxe success" role="status">
+        <i class="bi bi-check-circle-fill lead-icon"></i>
+        <div th:text="${success}">Saved</div>
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    </div>
+    <div th:if="${error}" class="toast-luxe error" role="alert">
+        <i class="bi bi-exclamation-octagon-fill lead-icon"></i>
+        <div th:text="${error}">Error</div>
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    </div>
+    <div th:if="${info}" class="toast-luxe info" role="status">
+        <i class="bi bi-info-circle-fill lead-icon"></i>
+        <div th:text="${info}">Info</div>
+        <button type="button" class="btn-close" aria-label="Close"></button>
+    </div>
+</div>
+
+<!-- ============ footer ============ -->
+<footer th:fragment="footer" class="site-footer">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <a class="brand d-flex align-items-center gap-2 mb-3" th:href="@{/}">
+                    <span class="brand-mark">A</span>
+                    <span><span class="brand-name">The Aurelia</span><span class="brand-sub">Boutique Hotel &amp; Spa</span></span>
+                </a>
+                <p class="mb-0">A quiet coastal retreat of nine individually designed rooms and suites, thoughtful service and unhurried days.</p>
+            </div>
+            <div class="col-6 col-lg-2">
+                <h6>Explore</h6>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a th:href="@{/rooms}">Rooms &amp; Suites</a></li>
+                    <li><a th:href="@{/#experiences}">Experiences</a></li>
+                    <li><a th:href="@{/manage-booking}">Manage Booking</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-lg-2">
+                <h6>Rooms</h6>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a th:href="@{/rooms(type='STANDARD')}">Standard</a></li>
+                    <li><a th:href="@{/rooms(type='DELUXE')}">Deluxe</a></li>
+                    <li><a th:href="@{/rooms(type='SUITE')}">Suites</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-4">
+                <h6>Visit</h6>
+                <p class="mb-2"><i class="bi bi-geo-alt me-2 text-gold"></i>Coastal Road, Bentota, Sri Lanka</p>
+                <p class="mb-2"><i class="bi bi-clock me-2 text-gold"></i>Check-in 2:00 PM · Check-out 12:00 PM</p>
+                <p class="mb-0 small">Fictional hotel created for an academic project (SE1020).</p>
+            </div>
+        </div>
+        <div class="footer-bottom d-flex flex-wrap justify-content-between gap-2">
+            <span>&copy; <span th:text="${#temporals.year(#temporals.createNow())}">2026</span> The Aurelia · SE1020 OOP Project</span>
+            <span>Photography: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a> (Unsplash License)</span>
+        </div>
+    </div>
+</footer>
+
+<!-- ============ shared confirm modal ============ -->
+<div th:fragment="confirmModal" class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-2">
+            <div class="modal-body text-center pt-4">
+                <div class="modal-icon mx-auto mb-3"><i class="bi bi-exclamation-triangle"></i></div>
+                <h2 class="h3" id="confirmModalTitle" data-confirm-title>Please confirm</h2>
+                <p class="text-muted-soft mb-0" data-confirm-message>Are you sure?</p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pb-4">
+                <button type="button" class="btn btn-outline-navy" data-bs-dismiss="modal">Keep it</button>
+                <button type="button" class="btn btn-ghost-danger" data-confirm-ok>Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ scripts ============ -->
+<th:block th:fragment="scripts">
+    <script th:src="@{/vendor/bootstrap/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/js/app.js}"></script>
+</th:block>
+
+<!-- ============ reusable room card (dates are passed on to the details/booking pages) ============ -->
+<article th:fragment="roomCard(room, checkIn, checkOut, guests)" class="room-card"
+         th:with="hasDates=${checkIn != null and checkOut != null},
+                  detailUrl=${hasDates} ? @{/rooms/{id}(id=${room.id},checkIn=${checkIn},checkOut=${checkOut},guests=${guests})} : @{/rooms/{id}(id=${room.id})},
+                  bookUrl=${hasDates} ? @{/book(roomId=${room.id},checkIn=${checkIn},checkOut=${checkOut},guests=${guests})} : @{/book(roomId=${room.id})}">
+    <a class="media d-block" th:href="${detailUrl}" th:aria-label="'View ' + ${room.name}">
+        <img th:src="@{${room.imageUrl}}" th:alt="${room.name}" loading="lazy">
+        <span class="type-badge" th:text="${room.type.displayName}">Suite</span>
+        <span class="price-badge">from <strong th:text="${@fmt.money(room.basePrice)}">LKR 0</strong> / night</span>
+    </a>
+    <div class="body">
+        <h3><a class="text-reset" th:href="${detailUrl}" th:text="${room.name}">Room</a></h3>
+        <div class="room-meta mb-2">
+            <span><i class="bi bi-people"></i><span th:text="'Up to ' + ${room.capacity} + ' guests'">2 guests</span></span>
+            <span><i class="bi bi-door-closed"></i><span th:text="'Room ' + ${room.roomNumber}">101</span></span>
+        </div>
+        <p class="desc mb-3" th:text="${room.description}">Description</p>
+        <div class="amenity-chips mb-4">
+            <span class="chip" th:each="feature, it : ${room.roomFeatures}" th:if="${it.index < 4}">
+                <i class="bi bi-check2"></i><span th:text="${feature}">Wi-Fi</span>
+            </span>
+        </div>
+        <div class="mt-auto d-flex gap-2">
+            <a class="btn btn-outline-navy btn-sm flex-fill" th:href="${detailUrl}">View details</a>
+            <a class="btn btn-gold btn-sm flex-fill" th:href="${bookUrl}">Book now</a>
+        </div>
+    </div>
+</article>
+
+</body>
+</html>

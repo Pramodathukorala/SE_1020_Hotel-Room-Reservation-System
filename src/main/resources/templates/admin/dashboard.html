@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin dashboard')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('dashboard')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb" th:text="${@fmt.date(today)}">date</div>
+                <h1>Good day, manager</h1>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-navy btn-sm" th:href="@{/admin/rooms/new}"><i class="bi bi-plus-lg me-1"></i>Add room</a>
+                <a class="btn btn-gold btn-sm" th:href="@{/admin/reservations/new}"><i class="bi bi-calendar-plus me-1"></i>New reservation</a>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <!-- ============ overview cards ============ -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <a class="stat-card tone-gold d-block text-reset" th:href="@{/admin/rooms}">
+                        <div class="icon"><i class="bi bi-door-open"></i></div>
+                        <div class="value" th:text="${stats.totalRooms}">0</div>
+                        <div class="label">Total rooms</div>
+                        <div class="hint"><span th:text="${stats.availableRooms}">0</span> free tonight · <span th:text="${stats.roomsUnderMaintenance}">0</span> in maintenance</div>
+                    </a>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <a class="stat-card tone-navy d-block text-reset" th:href="@{/admin/customers}">
+                        <div class="icon"><i class="bi bi-people"></i></div>
+                        <div class="value" th:text="${stats.totalCustomers}">0</div>
+                        <div class="label">Total customers</div>
+                        <div class="hint">Registered guest profiles</div>
+                    </a>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <a class="stat-card tone-green d-block text-reset" th:href="@{/admin/reservations(status='CONFIRMED')}">
+                        <div class="icon"><i class="bi bi-calendar2-check"></i></div>
+                        <div class="value" th:text="${stats.activeReservations}">0</div>
+                        <div class="label">Active bookings</div>
+                        <div class="hint"><span th:text="${stats.arrivalsToday}">0</span> arriving today</div>
+                    </a>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <a class="stat-card tone-rose d-block text-reset" th:href="@{/admin/reservations}">
+                        <div class="icon"><i class="bi bi-journal-bookmark"></i></div>
+                        <div class="value" th:text="${stats.totalReservations}">0</div>
+                        <div class="label">Total reservations</div>
+                        <div class="hint"><span th:text="${stats.cancelledReservations}">0</span> cancelled</div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- ============ upcoming stays ============ -->
+                <div class="col-xl-8">
+                    <section class="table-card">
+                        <div class="table-toolbar">
+                            <h2>Upcoming &amp; current stays</h2>
+                            <a class="btn btn-sm btn-outline-navy" th:href="@{/admin/reservations}">All reservations</a>
+                        </div>
+                        <div class="table-responsive" th:if="${!upcoming.isEmpty()}">
+                            <table class="table table-luxe">
+                                <thead><tr><th scope="col">Reference</th><th scope="col">Guest</th><th scope="col">Room</th><th scope="col">Stay</th><th scope="col" class="text-end">Total</th></tr></thead>
+                                <tbody>
+                                <tr th:each="d : ${upcoming}">
+                                    <td><a class="mono" th:href="@{/admin/reservations/{id}(id=${d.reservation.id})}" th:text="${d.reservation.id}">RES</a></td>
+                                    <td th:text="${d.customer != null ? d.customer.fullName : d.reservation.customerId}">Guest</td>
+                                    <td th:text="${d.room != null ? d.room.roomNumber + ' · ' + d.room.name : d.reservation.roomId}">Room</td>
+                                    <td class="small">
+                                        <span th:text="${@fmt.shortDate(d.reservation.checkIn)} + ' → ' + ${@fmt.shortDate(d.reservation.checkOut)}">dates</span>
+                                        <span class="pill pill-available ms-1" th:if="${!d.reservation.checkIn.isAfter(today)}">In house</span>
+                                    </td>
+                                    <td class="text-end fw-medium text-nowrap" th:text="${@fmt.money(d.reservation.totalPrice)}">LKR</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-5 text-center text-muted-soft" th:if="${upcoming.isEmpty()}">
+                            <i class="bi bi-calendar4-week fs-2 text-gold"></i>
+                            <p class="mt-2 mb-3">No upcoming stays yet.</p>
+                            <a class="btn btn-sm btn-gold" th:href="@{/admin/reservations/new}">Create a reservation</a>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ============ occupancy + revenue ============ -->
+                <div class="col-xl-4">
+                    <section class="panel mb-4">
+                        <h2 class="h4 mb-3">Tonight's occupancy</h2>
+                        <div class="d-flex justify-content-between align-items-baseline mb-2">
+                            <span class="font-serif" style="font-size:2.4rem;line-height:1" th:text="${stats.occupancyPercent()} + '%'">0%</span>
+                            <span class="small text-muted-soft"><span th:text="${stats.occupiedTonight}">0</span> rooms occupied</span>
+                        </div>
+                        <div class="occupancy-bar" role="progressbar" th:aria-valuenow="${stats.occupancyPercent()}" aria-valuemin="0" aria-valuemax="100">
+                            <span th:style="'width:' + ${stats.occupancyPercent()} + '%'"></span>
+                        </div>
+                        <hr class="my-4">
+                        <div class="small text-muted-soft text-uppercase" style="letter-spacing:.12em">Value of active bookings</div>
+                        <div class="font-serif" style="font-size:2rem" th:text="${@fmt.money(stats.confirmedRevenue)}">LKR</div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h4 mb-0">Customers</h2>
+                            <a class="small" th:href="@{/admin/customers}">View all</a>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a class="d-flex align-items-center gap-2 text-reset" th:each="c : ${recentCustomers}" th:href="@{/admin/customers/{id}(id=${c.id})}">
+                                <span class="avatar" th:text="${c.initials}">NP</span>
+                                <span class="flex-fill"><span class="d-block fw-medium" th:text="${c.fullName}">Name</span><span class="small text-muted-soft" th:text="${c.email}">email</span></span>
+                            </a>
+                            <p class="text-muted-soft small mb-0" th:if="${recentCustomers.isEmpty()}">No customers registered.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ============ room status ============ -->
+                <div class="col-12">
+                    <section class="table-card">
+                        <div class="table-toolbar">
+                            <h2>Room status</h2>
+                            <a class="btn btn-sm btn-outline-navy" th:href="@{/admin/rooms}">Manage rooms</a>
+                        </div>
+                        <div class="p-3">
+                            <div class="row g-3">
+                                <div class="col-sm-6 col-lg-4" th:each="room : ${rooms}">
+                                    <a class="room-tile text-reset" th:href="@{/admin/rooms/{id}/edit(id=${room.id})}">
+                                        <img th:src="@{${room.imageUrl}}" th:alt="${room.name}">
+                                        <span class="flex-fill" style="min-width:0">
+                                            <span class="d-block fw-medium text-truncate" th:text="${room.roomNumber} + ' · ' + ${room.name}">Room</span>
+                                            <span class="small text-muted-soft" th:text="${@fmt.money(room.basePrice)}">LKR</span>
+                                        </span>
+                                        <span class="pill" th:classappend="${room.underMaintenance} ? 'pill-maintenance' : 'pill-available'"
+                                              th:text="${room.underMaintenance} ? 'Maintenance' : 'Open'">Open</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

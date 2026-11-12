@@ -1,1 +1,140 @@
-<!doctype html><html lang="en" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{fragments :: head}"></head><body><header th:replace="~{fragments :: header}"></header><main><section class="page-heading container"><span class="eyebrow">MAKE TIME FOR YOURSELF</span><h1>Your stay begins here.</h1><p>Choose your retreat. We will take care of the details.</p></section><section class="container narrow"><form action="/book" method="post" class="panel" th:object="${booking}" id="booking-form"><input type="hidden" th:field="*{id}"><label for="roomId">Your room</label><select id="roomId" th:field="*{roomId}" required><option value="">Choose a room</option><option th:each="r : ${rooms}" th:value="${r.id}" th:text="|${r.category} · Room ${r.number} · $${r.calculateNightlyRate()}/night · ${r.capacity} guests|" th:attr="data-rate=${r.calculateNightlyRate()}" th:disabled="${r.maintenance}"></option></select><label for="customerId">Guest profile</label><select id="customerId" th:field="*{customerId}" required><option value="">Choose a registered guest</option><option th:each="c : ${customers}" th:value="${c.id}" th:text="|${c.name} · ${c.email}|"></option></select><p class="help">First time here? <a href="/customers/register">Create your guest profile ↗</a></p><div class="two-cols"><div><label for="checkIn">Check-in</label><input type="date" id="checkIn" th:field="*{checkIn}" th:min="${today}" required></div><div><label for="checkOut">Check-out</label><input type="date" id="checkOut" th:field="*{checkOut}" th:min="${today.plusDays(1)}" required></div></div><label for="guests">Number of guests</label><input type="number" id="guests" th:field="*{guests}" min="1" max="20" required><div class="quote" id="quote" aria-live="polite">Choose a room and dates for your estimated total.</div><p class="help">Final availability and price are validated by the hotel server. No payment is collected.</p><div class="form-actions"><button class="button">Confirm reservation ↗</button><a href="/rooms">Explore rooms</a></div></form></section></main><footer th:replace="~{fragments :: footer}"></footer></body></html>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Complete your booking')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset">
+    <div class="container py-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a th:href="@{/rooms}">Rooms</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/rooms/{id}(id=${room.id})}" th:text="${room.name}">Room</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Booking</li>
+            </ol>
+        </nav>
+        <span class="eyebrow">Step 2 of 3 · Your details</span>
+        <h1 class="display-6 mb-4">Complete your booking</h1>
+
+        <form th:action="@{/book}" th:object="${bookingForm}" method="post" novalidate>
+            <div class="row g-4 g-xl-5">
+                <!-- ============ form ============ -->
+                <div class="col-lg-7">
+                    <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+                    </div>
+
+                    <input type="hidden" th:field="*{roomId}">
+
+                    <section class="panel mb-4" data-date-range>
+                        <h2 class="panel-title">Your stay</h2>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label class="form-label" for="checkIn">Check-in</label>
+                                <input class="form-control" type="date" th:field="*{checkIn}" th:min="${today}" th:errorclass="is-invalid" data-checkin>
+                                <div class="invalid-feedback" th:errors="*{checkIn}">error</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="checkOut">Check-out</label>
+                                <input class="form-control" type="date" th:field="*{checkOut}" th:min="${today}" th:errorclass="is-invalid" data-checkout>
+                                <div class="invalid-feedback" th:errors="*{checkOut}">error</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="guests">Guests</label>
+                                <select class="form-select" th:field="*{guests}" th:errorclass="is-invalid">
+                                    <option th:each="n : ${#numbers.sequence(1, room.capacity)}" th:value="${n}" th:text="${n} + (${n} == 1 ? ' guest' : ' guests')">1</option>
+                                </select>
+                                <div class="invalid-feedback" th:errors="*{guests}">error</div>
+                            </div>
+                            <div class="col-sm-6 d-flex align-items-end">
+                                <button class="btn btn-outline-navy w-100" type="submit" th:formaction="@{/book/quote}" formnovalidate>
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Update price
+                                </button>
+                            </div>
+                        </div>
+                        <p class="small text-muted-soft mt-3 mb-0"><i class="bi bi-moon-stars me-1"></i><span data-nights-output>Select dates</span> · changed your dates? Press "Update price" to refresh the total.</p>
+                    </section>
+
+                    <section class="panel">
+                        <h2 class="panel-title">Guest details</h2>
+                        <p class="small text-muted-soft">Returning guest? Use the same email address and we'll link this booking to your profile.</p>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="customer.fullName">Full name</label>
+                                <input class="form-control" type="text" th:field="*{customer.fullName}" th:errorclass="is-invalid" autocomplete="name" required maxlength="80">
+                                <div class="invalid-feedback" th:errors="*{customer.fullName}">error</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="customer.email">Email</label>
+                                <input class="form-control" type="email" th:field="*{customer.email}" th:errorclass="is-invalid" autocomplete="email" required>
+                                <div class="invalid-feedback" th:errors="*{customer.email}">error</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="customer.phone">Phone</label>
+                                <input class="form-control" type="tel" th:field="*{customer.phone}" th:errorclass="is-invalid" autocomplete="tel" placeholder="+94 77 123 4567" required>
+                                <div class="invalid-feedback" th:errors="*{customer.phone}">error</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="customer.address">Address</label>
+                                <input class="form-control" type="text" th:field="*{customer.address}" th:errorclass="is-invalid" autocomplete="street-address" required maxlength="200">
+                                <div class="invalid-feedback" th:errors="*{customer.address}">error</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ============ summary ============ -->
+                <div class="col-lg-5">
+                    <aside class="panel sticky-panel" aria-label="Booking summary">
+                        <div class="d-flex gap-3 align-items-center mb-3">
+                            <img th:src="@{${room.imageUrl}}" th:alt="${room.name}" class="rounded-3" style="width:96px;height:72px;object-fit:cover">
+                            <div>
+                                <div class="eyebrow mb-1" th:text="${room.type.displayName}">Suite</div>
+                                <div class="font-serif h4 mb-0" th:text="${room.name}">Room</div>
+                            </div>
+                        </div>
+
+                        <div class="availability mb-3" th:classappend="${quote.available} ? 'ok' : 'no'" role="status">
+                            <i class="bi" th:classappend="${quote.available} ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'"></i>
+                            <span th:text="${quote.message}">message</span>
+                        </div>
+
+                        <th:block th:if="${quote.stay != null}">
+                            <div class="summary-line"><span class="k">Check-in</span><span th:text="${@fmt.date(quote.stay.checkIn)}">date</span></div>
+                            <div class="summary-line"><span class="k">Check-out</span><span th:text="${@fmt.date(quote.stay.checkOut)}">date</span></div>
+                            <div class="summary-line"><span class="k">Length of stay</span><span th:text="${@fmt.nights(quote.nights())}">2 nights</span></div>
+                            <div class="summary-line"><span class="k">Guests</span><span th:text="${quote.guests}">2</span></div>
+                            <details class="mt-2">
+                                <summary class="small text-gold">Price per night</summary>
+                                <div class="night-list mt-2">
+                                    <div class="summary-line" th:each="entry : ${quote.nightlyRates}">
+                                        <span class="k" th:text="${@fmt.date(entry.key)}">date</span>
+                                        <span th:text="${@fmt.money(entry.value)}">price</span>
+                                    </div>
+                                </div>
+                            </details>
+                            <div class="summary-total">
+                                <span class="k">Total</span>
+                                <span class="v" th:text="${@fmt.money(quote.total)}">LKR</span>
+                            </div>
+                            <p class="small text-muted-soft mt-1 mb-0" th:text="${room.pricingNote}">note</p>
+                        </th:block>
+
+                        <button class="btn btn-gold btn-lg w-100 mt-4" type="submit">
+                            <i class="bi bi-lock me-1"></i>Confirm reservation
+                        </button>
+                        <p class="small text-muted-soft text-center mt-3 mb-0">Payment is taken at the hotel. You can cancel online at any time.</p>
+                    </aside>
+                </div>
+            </div>
+        </form>
+    </div>
+</main>
+
+<div class="mt-5"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,5 +1,24 @@
+# Maven build output
 target/
+
+# Runtime data files (created on first run; contain user-entered records)
 data/
+*.tmp
+*.bak
+
+# IDE / editor
 .idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and local secrets
 *.log
-.maven-cache/
+.env
+application-local.properties

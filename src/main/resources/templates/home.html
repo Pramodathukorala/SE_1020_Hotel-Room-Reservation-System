@@ -1,1 +1,183 @@
-<!doctype html><html lang="en" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{fragments :: head}"></head><body><header th:replace="~{fragments :: header}"></header><main><section class="hero"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow light">THE ART OF SLOWING DOWN</span><h1>Some places stay<br>with you.</h1><p>An intimate coastal hideaway. A little closer to nature.<br>A little further from ordinary.</p><a href="/rooms" class="button ivory">Find your sanctuary ↗</a></div><div class="hero-caption"><span>06°01′ N · 80°13′ E</span><span>GALLE, SRI LANKA</span></div></section><section class="container search-wrap"><form class="availability" action="/rooms"><div><label for="arrival">ARRIVAL</label><input id="arrival" type="date" name="in" th:min="${today}" required></div><div><label for="departure">DEPARTURE</label><input id="departure" type="date" name="out" th:min="${today.plusDays(1)}" required></div><div><label for="category">YOUR RETREAT</label><select name="category" id="category"><option value="">All room types</option>STANDARD</option><option>DELUXE</option><option>SUITE</option></select></div><button class="button">Check availability ↗</button></form></section><section class="container intro"><span class="eyebrow">WELCOME TO AURELIA</span><div class="intro-grid"><h2>Less hurry.<br>More here.</h2><div><p>Salt in the air. Light through the palms. Space to simply be. Welcome to a home by the ocean, where every detail is considered and every day unfolds at your pace.</p><a href="/rooms" class="text-link">Discover your next escape ↗</a></div></div></section><section class="container room-section"><div class="section-top"><div><span class="eyebrow">REST, BEAUTIFULLY</span><h2>A room of your own.</h2></div><a href="/rooms" class="text-link">View all rooms ↗</a></div><div class="room-grid"><article class="room-card" th:each="room : ${rooms}"><a th:href="@{/rooms/{id}(id=${room.id})}" class="room-photo" th:classappend="${room.category.toLowerCase()}"><span class="pill" th:text="${room.category}"></span></a><div class="room-body"><div class="room-meta"><span th:text="|ROOM ${room.number}|"></span><span th:text="|Up to ${room.capacity} guests|"></span></div><h3><a th:href="@{/rooms/{id}(id=${room.id})}" th:text="|${#strings.capitalize(#strings.toLowerCase(room.category))} retreat|"></a></h3><p th:text="${room.description}"></p><div class="card-bottom"><div><strong th:text="|$${room.calculateNightlyRate()}|"></strong><small> / night</small></div><a class="text-link" th:href="@{/rooms/{id}(id=${room.id})}">Explore room ↗</a></div></div></article></div><p th:if="${#lists.isEmpty(rooms)}">Our collection is being prepared. <a href="/admin/rooms/new">Add the first room.</a></p></section><section class="editorial"><div class="editorial-photo"></div><div class="editorial-text"><span class="eyebrow">THE AURELIA WAY</span><h2>Small details.<br>Extraordinary stays.</h2><p>Morning coffee on your balcony. Linen that feels like a cloud. An ocean that never checks the time. Find the luxury of feeling completely at home.</p><a href="/book" class="button">Make yourself at home ↗</a></div></section></main><footer th:replace="~{fragments :: footer}"></footer></body></html>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Boutique Hotel & Spa')}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(true)}"></nav>
+
+<main id="main">
+    <!-- ================= HERO ================= -->
+    <header class="hero" th:style="'background-image: url(' + @{/images/hero-pool.jpg} + ')'">
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-8">
+                    <span class="eyebrow">Bentota · Sri Lanka</span>
+                    <h1 class="display-hero mb-3">Slow mornings,<br><em>golden</em> evenings.</h1>
+                    <p class="hero-sub mb-5">Nine individually designed rooms and suites between the palms and the Indian Ocean. Unhurried, attentive and wholly yours.</p>
+                </div>
+            </div>
+
+            <!-- availability search: submits to the room listing, which filters by real reservations -->
+            <form class="search-panel" th:action="@{/rooms}" method="get" data-date-range aria-label="Search room availability">
+                <div class="row g-0 align-items-center">
+                    <div class="col-lg-3 field">
+                        <label class="form-label" for="hero-checkin"><i class="bi bi-calendar-event me-1"></i>Check-in</label>
+                        <input class="form-control" type="date" id="hero-checkin" name="checkIn" required
+                               th:value="${defaultCheckIn}" th:min="${today}" data-checkin>
+                    </div>
+                    <div class="col-lg-3 field divider">
+                        <label class="form-label" for="hero-checkout"><i class="bi bi-calendar-check me-1"></i>Check-out</label>
+                        <input class="form-control" type="date" id="hero-checkout" name="checkOut" required
+                               th:value="${defaultCheckOut}" th:min="${defaultCheckIn}" data-checkout>
+                    </div>
+                    <div class="col-lg-2 field divider">
+                        <label class="form-label" for="hero-guests"><i class="bi bi-people me-1"></i>Guests</label>
+                        <select class="form-select" id="hero-guests" name="guests">
+                            <option th:each="n : ${#numbers.sequence(1, 6)}" th:value="${n}" th:text="${n} + (${n} == 1 ? ' guest' : ' guests')" th:selected="${n == 2}">2 guests</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 field divider">
+                        <label class="form-label" for="hero-type"><i class="bi bi-house-door me-1"></i>Room</label>
+                        <select class="form-select" id="hero-type" name="type">
+                            <option value="">Any type</option>
+                            <option th:each="t : ${roomTypes}" th:value="${t}" th:text="${t.displayName}">Suite</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 p-2">
+                        <button class="btn btn-gold btn-lg w-100" type="submit"><i class="bi bi-search me-2"></i>Search</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="hero-stats mt-5">
+                <div><div class="num" th:text="${roomCount}">9</div><div class="lbl">Rooms &amp; suites</div></div>
+                <div><div class="num">3</div><div class="lbl">Room categories</div></div>
+                <div><div class="num">24/7</div><div class="lbl">Guest service</div></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= INTRO ================= -->
+    <section class="section">
+        <div class="container">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-6 reveal">
+                    <span class="eyebrow">Welcome to The Aurelia</span>
+                    <h2 class="section-title mb-4">A small hotel with a quiet sense of occasion.</h2>
+                    <p class="lead-muted mb-4">Every room is shaped around light, texture and calm: crisp linens, natural timber, generous bathrooms and windows that open to the garden or the sea.</p>
+                    <div class="row g-4">
+                        <div class="col-sm-6 icon-feature">
+                            <div class="icon-circle"><i class="bi bi-calendar2-check"></i></div>
+                            <div><h6 class="mb-1">Instant confirmation</h6><p class="text-muted-soft small mb-0">Live availability for every night of your stay.</p></div>
+                        </div>
+                        <div class="col-sm-6 icon-feature">
+                            <div class="icon-circle"><i class="bi bi-shield-check"></i></div>
+                            <div><h6 class="mb-1">Transparent pricing</h6><p class="text-muted-soft small mb-0">See the price of every night before you book.</p></div>
+                        </div>
+                        <div class="col-sm-6 icon-feature">
+                            <div class="icon-circle"><i class="bi bi-arrow-repeat"></i></div>
+                            <div><h6 class="mb-1">Flexible stays</h6><p class="text-muted-soft small mb-0">Manage or cancel your booking online.</p></div>
+                        </div>
+                        <div class="col-sm-6 icon-feature">
+                            <div class="icon-circle"><i class="bi bi-stars"></i></div>
+                            <div><h6 class="mb-1">Personal service</h6><p class="text-muted-soft small mb-0">Butler service in our Royal Residence.</p></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 reveal">
+                    <div class="row g-3">
+                        <div class="col-7"><img class="w-100 rounded-4 shadow" style="aspect-ratio:3/4;object-fit:cover" th:src="@{/images/hotel-evening.jpg}" alt="The hotel and pool at dusk"></div>
+                        <div class="col-5 d-flex flex-column gap-3 pt-5">
+                            <img class="w-100 rounded-4 shadow" style="aspect-ratio:1;object-fit:cover" th:src="@{/images/rooms/deluxe-garden.jpg}" alt="Deluxe garden room">
+                            <img class="w-100 rounded-4 shadow" style="aspect-ratio:1;object-fit:cover" th:src="@{/images/rooms/suite-panorama.jpg}" alt="Panorama suite">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= FEATURED ROOMS ================= -->
+    <section class="section bg-ivory-deep">
+        <div class="container">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-5 reveal">
+                <div>
+                    <span class="eyebrow">Rooms &amp; Suites</span>
+                    <h2 class="section-title mb-0">Find your place to unwind</h2>
+                </div>
+                <a class="btn btn-outline-navy" th:href="@{/rooms}">View all rooms <i class="bi bi-arrow-right ms-1"></i></a>
+            </div>
+            <div class="row g-4" th:if="${!featuredRooms.isEmpty()}">
+                <div class="col-md-6 col-lg-4 reveal" th:each="room : ${featuredRooms}">
+                    <article th:replace="~{fragments/layout :: roomCard(${room}, ${null}, ${null}, ${null})}"></article>
+                </div>
+            </div>
+            <div class="empty-state" th:if="${featuredRooms.isEmpty()}">
+                <i class="bi bi-door-open"></i>
+                <h3 class="mt-3">No rooms are open for booking right now</h3>
+                <p class="text-muted-soft mb-0">Rooms can be added from the admin dashboard.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= EXPERIENCES ================= -->
+    <section class="section" id="experiences">
+        <div class="container">
+            <div class="text-center mb-5 reveal">
+                <span class="eyebrow">Hotel amenities</span>
+                <h2 class="section-title">Experiences beyond the room</h2>
+                <p class="lead-muted mx-auto" style="max-width:600px">Open to every guest of The Aurelia. Ask at reception to reserve a time.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4 reveal">
+                    <div class="feature-tile">
+                        <img th:src="@{/images/pool-deck.jpg}" alt="Pool deck with sun loungers" loading="lazy">
+                        <div class="inner"><h3>Lagoon Pool</h3><p>A shaded deck, cool water and loungers from sunrise to late evening.</p></div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 reveal">
+                    <div class="feature-tile">
+                        <img th:src="@{/images/spa.jpg}" alt="Spa treatment" loading="lazy">
+                        <div class="inner"><h3>Aurelia Spa</h3><p>Ayurvedic rituals and massages with warm coconut oils.</p></div>
+                    </div>
+                </div>
+                <div class="col-md-12 col-lg-4 reveal">
+                    <div class="feature-tile">
+                        <img th:src="@{/images/dining.jpg}" alt="Fine dining table" loading="lazy">
+                        <div class="inner"><h3>The Long Table</h3><p>Seasonal Sri Lankan cooking with seafood from the morning's catch.</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4 mt-4 text-center text-md-start">
+                <div class="col-6 col-md-3 reveal"><div class="icon-feature flex-column flex-md-row align-items-center align-items-md-start"><div class="icon-circle"><i class="bi bi-wifi"></i></div><div><h6 class="mb-1">Fast Wi-Fi</h6><p class="small text-muted-soft mb-0">Throughout the hotel</p></div></div></div>
+                <div class="col-6 col-md-3 reveal"><div class="icon-feature flex-column flex-md-row align-items-center align-items-md-start"><div class="icon-circle"><i class="bi bi-cup-hot"></i></div><div><h6 class="mb-1">Breakfast</h6><p class="small text-muted-soft mb-0">Served on the terrace</p></div></div></div>
+                <div class="col-6 col-md-3 reveal"><div class="icon-feature flex-column flex-md-row align-items-center align-items-md-start"><div class="icon-circle"><i class="bi bi-car-front"></i></div><div><h6 class="mb-1">Transfers</h6><p class="small text-muted-soft mb-0">From Colombo airport</p></div></div></div>
+                <div class="col-6 col-md-3 reveal"><div class="icon-feature flex-column flex-md-row align-items-center align-items-md-start"><div class="icon-circle"><i class="bi bi-bicycle"></i></div><div><h6 class="mb-1">Bicycles</h6><p class="small text-muted-soft mb-0">To explore the coast</p></div></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= CTA ================= -->
+    <section class="pb-5 mb-4">
+        <div class="container">
+            <div class="cta-band reveal" th:style="'background-image: url(' + @{/images/ocean-deck.jpg} + ')'">
+                <div class="row">
+                    <div class="col-lg-7">
+                        <span class="eyebrow" style="color:var(--gold-soft)">Plan your escape</span>
+                        <h2 class="section-title mb-3">Your ocean-side room is waiting.</h2>
+                        <p class="mb-4" style="color:rgba(255,255,255,.82)">Choose your dates, see the exact price of every night and receive your confirmation instantly.</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-gold btn-lg" th:href="@{/rooms}">Check availability</a>
+                            <a class="btn btn-outline-light-soft btn-lg" th:href="@{/manage-booking}">Manage a booking</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

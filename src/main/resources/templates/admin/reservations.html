@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Reservations · Admin')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('reservations')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb">Admin / Reservations</div>
+                <h1>Reservation management</h1>
+            </div>
+            <a class="btn btn-gold btn-sm" th:href="@{/admin/reservations/new}"><i class="bi bi-calendar-plus me-1"></i>New reservation</a>
+        </header>
+
+        <div class="admin-content">
+            <section class="table-card">
+                <div class="table-toolbar">
+                    <form class="d-flex flex-wrap gap-2 flex-fill" th:action="@{/admin/reservations}" method="get" role="search">
+                        <div class="search-input flex-fill" style="min-width:220px;max-width:420px">
+                            <i class="bi bi-search"></i>
+                            <label class="visually-hidden" for="res-q">Search reservations</label>
+                            <input class="form-control" type="search" id="res-q" name="q" th:value="${q}" placeholder="Reference, customer, email or room no.">
+                        </div>
+                        <label class="visually-hidden" for="res-status">Status</label>
+                        <select class="form-select" id="res-status" name="status" style="max-width:170px">
+                            <option value="">All statuses</option>
+                            <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.displayName}" th:selected="${status == s}">Confirmed</option>
+                        </select>
+                        <button class="btn btn-navy" type="submit">Filter</button>
+                        <a class="btn btn-outline-navy" th:href="@{/admin/reservations}" th:if="${(q != null and q != '') or status != null}">Clear</a>
+                    </form>
+                    <span class="small text-muted-soft"><span th:text="${reservations.size()}">0</span> result(s)</span>
+                </div>
+
+                <div class="table-responsive" th:if="${!reservations.isEmpty()}">
+                    <table class="table table-luxe">
+                        <thead>
+                        <tr><th scope="col">Reference</th><th scope="col">Guest</th><th scope="col">Room</th><th scope="col">Stay</th><th scope="col">Guests</th><th scope="col">Total</th><th scope="col">Status</th><th scope="col" class="text-end">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="d : ${reservations}" th:with="r=${d.reservation}">
+                            <td><a class="mono fw-medium" th:href="@{/admin/reservations/{id}(id=${r.id})}" th:text="${r.id}">RES</a></td>
+                            <td>
+                                <a class="text-reset" th:if="${d.customer != null}" th:href="@{/admin/customers/{id}(id=${d.customer.id})}">
+                                    <span class="d-block fw-medium" th:text="${d.customer.fullName}">Name</span>
+                                    <span class="small text-muted-soft" th:text="${d.customer.email}">email</span>
+                                </a>
+                                <span class="text-muted-soft" th:if="${d.customer == null}" th:text="${r.customerId} + ' (missing)'">missing</span>
+                            </td>
+                            <td th:text="${d.room != null ? d.room.roomNumber + ' · ' + d.room.name : r.roomId}">Room</td>
+                            <td class="small text-nowrap">
+                                <span th:text="${@fmt.shortDate(r.checkIn)} + ' → ' + ${@fmt.shortDate(r.checkOut)} + ' ' + ${#temporals.year(r.checkOut)}">dates</span>
+                                <span class="d-block text-muted-soft" th:text="${@fmt.nights(r.nights)}">2 nights</span>
+                            </td>
+                            <td th:text="${r.guests}">2</td>
+                            <td class="fw-medium text-nowrap" th:text="${@fmt.money(r.totalPrice)}">LKR</td>
+                            <td>
+                                <span class="pill" th:classappend="${r.active} ? (${r.checkOut.isAfter(today)} ? 'pill-confirmed' : 'pill-past') : 'pill-cancelled'"
+                                      th:text="${r.active and !r.checkOut.isAfter(today)} ? 'Completed' : ${r.status.displayName}">Confirmed</span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/reservations/{id}(id=${r.id})}" title="View">
+                                    <i class="bi bi-eye"></i><span class="visually-hidden" th:text="'View ' + ${r.id}">View</span></a>
+                                <a class="btn btn-icon btn-outline-navy" th:if="${r.active}" th:href="@{/admin/reservations/{id}/edit(id=${r.id})}" title="Edit">
+                                    <i class="bi bi-pencil"></i><span class="visually-hidden" th:text="'Edit ' + ${r.id}">Edit</span></a>
+                                <form class="d-inline" th:if="${r.active}" th:action="@{/admin/reservations/{id}/cancel(id=${r.id})}" method="post"
+                                      th:attr="data-confirm='Reservation ' + ${r.id} + ' will be cancelled and the room released for those dates.'"
+                                      data-confirm-title="Cancel this reservation?" data-confirm-button="Cancel reservation">
+                                    <button class="btn btn-icon btn-ghost-danger" type="submit" title="Cancel reservation">
+                                        <i class="bi bi-x-circle"></i><span class="visually-hidden" th:text="'Cancel ' + ${r.id}">Cancel</span></button>
+                                </form>
+                                <form class="d-inline" th:if="${!r.active}" th:action="@{/admin/reservations/{id}/delete(id=${r.id})}" method="post"
+                                      th:attr="data-confirm='Cancelled reservation ' + ${r.id} + ' will be permanently deleted from the records.'"
+                                      data-confirm-title="Delete this reservation?" data-confirm-button="Delete permanently">
+                                    <button class="btn btn-icon btn-ghost-danger" type="submit" title="Delete">
+                                        <i class="bi bi-trash"></i><span class="visually-hidden" th:text="'Delete ' + ${r.id}">Delete</span></button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-5 text-center text-muted-soft" th:if="${reservations.isEmpty()}">
+                    <i class="bi bi-journal-bookmark fs-2 text-gold"></i>
+                    <p class="mt-2 mb-3">No reservations found.</p>
+                    <a class="btn btn-sm btn-gold" th:href="@{/admin/reservations/new}">Create a reservation</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

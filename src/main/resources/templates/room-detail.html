@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${room.name})}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset">
+    <div class="container py-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a th:href="@{/}">Home</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/rooms}">Rooms &amp; Suites</a></li>
+                <li class="breadcrumb-item active" aria-current="page" th:text="${room.name}">Room</li>
+            </ol>
+        </nav>
+
+        <div class="row g-5">
+            <!-- ============ room information ============ -->
+            <div class="col-lg-7 col-xl-8">
+                <div class="gallery-main mb-4">
+                    <img th:src="@{${room.imageUrl}}" th:alt="${room.name}">
+                </div>
+
+                <span class="eyebrow" th:text="${room.type.displayName} + ' · Room ' + ${room.roomNumber}">Suite</span>
+                <h1 class="display-5 mb-3" th:text="${room.name}">Room name</h1>
+                <p class="lead-muted mb-4" th:text="${room.description}">Description</p>
+
+                <div class="alert alert-warning d-flex gap-2" th:if="${room.underMaintenance}">
+                    <i class="bi bi-tools"></i><span>This room is temporarily closed for maintenance and cannot be booked at the moment.</span>
+                </div>
+
+                <div class="spec-grid mb-5">
+                    <div class="spec"><div class="k">Guests</div><div class="v" th:text="'Up to ' + ${room.capacity}">2</div></div>
+                    <div class="spec"><div class="k">Category</div><div class="v" th:text="${room.type.displayName}">Suite</div></div>
+                    <div class="spec" th:if="${room.type.name() == 'STANDARD'}"><div class="k">Bed</div><div class="v" th:text="${room.bedType}">Queen</div></div>
+                    <div class="spec" th:if="${room.type.name() == 'DELUXE'}"><div class="k">View</div><div class="v" th:text="${room.view}">Ocean</div></div>
+                    <div class="spec" th:if="${room.type.name() == 'SUITE'}"><div class="k">Bedrooms</div><div class="v" th:text="${room.bedrooms}">2</div></div>
+                    <div class="spec"><div class="k">From</div><div class="v" th:text="${@fmt.money(room.basePrice)}">LKR</div></div>
+                </div>
+
+                <h2 class="h3 mb-3">Room features</h2>
+                <ul class="feature-list mb-5">
+                    <li th:each="feature : ${room.roomFeatures}"><i class="bi bi-check2-circle"></i><span th:text="${feature}">Wi-Fi</span></li>
+                </ul>
+
+                <h2 class="h3 mb-2">How this room is priced</h2>
+                <p class="text-muted-soft mb-0"><i class="bi bi-info-circle me-1 text-gold"></i><span th:text="${room.pricingNote}">Pricing</span></p>
+            </div>
+
+            <!-- ============ booking widget ============ -->
+            <div class="col-lg-5 col-xl-4">
+                <aside class="panel sticky-panel" aria-labelledby="book-title">
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <div class="price-big"><span th:text="${@fmt.money(room.basePrice)}">LKR</span> <small>/ night</small></div>
+                    </div>
+                    <p class="small text-muted-soft mb-4" th:text="${room.pricingNote}">note</p>
+
+                    <h2 id="book-title" class="visually-hidden">Check availability</h2>
+                    <form th:action="@{/rooms/{id}(id=${room.id})}" method="get" data-date-range>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small" for="d-in">Check-in</label>
+                                <input class="form-control" type="date" id="d-in" name="checkIn" th:value="${checkIn}" th:min="${today}" required data-checkin>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small" for="d-out">Check-out</label>
+                                <input class="form-control" type="date" id="d-out" name="checkOut" th:value="${checkOut}" th:min="${today}" required data-checkout>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small" for="d-guests">Guests</label>
+                            <select class="form-select" id="d-guests" name="guests">
+                                <option th:each="n : ${#numbers.sequence(1, room.capacity)}" th:value="${n}"
+                                        th:text="${n} + (${n} == 1 ? ' guest' : ' guests')" th:selected="${n == guests}">1</option>
+                            </select>
+                        </div>
+                        <p class="small text-muted-soft mb-3"><i class="bi bi-moon-stars me-1"></i><span data-nights-output>Select dates</span></p>
+                        <button class="btn btn-navy w-100" type="submit" th:disabled="${room.underMaintenance}">
+                            <i class="bi bi-calendar2-check me-1"></i>Check availability &amp; price
+                        </button>
+                    </form>
+
+                    <!-- result of the server-side availability check -->
+                    <div th:if="${quote != null}" class="mt-4">
+                        <div class="availability" th:classappend="${quote.available} ? 'ok' : 'no'" role="status">
+                            <i class="bi" th:classappend="${quote.available} ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                            <span th:text="${quote.message}">message</span>
+                        </div>
+
+                        <div th:if="${quote.stay != null}" class="mt-3">
+                            <div class="night-list mb-2">
+                                <div class="summary-line" th:each="entry : ${quote.nightlyRates}">
+                                    <span class="k" th:text="${@fmt.date(entry.key)}">date</span>
+                                    <span th:text="${@fmt.money(entry.value)}">price</span>
+                                </div>
+                            </div>
+                            <div class="summary-total">
+                                <span class="k" th:text="'Total · ' + ${@fmt.nights(quote.nights())}">Total</span>
+                                <span class="v" th:text="${@fmt.money(quote.total)}">LKR</span>
+                            </div>
+                        </div>
+
+                        <a th:if="${quote.available}" class="btn btn-gold btn-lg w-100 mt-3"
+                           th:href="@{/book(roomId=${room.id},checkIn=${checkIn},checkOut=${checkOut},guests=${guests})}">
+                            Continue to booking <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- ============ other rooms ============ -->
+        <section class="mt-5 pt-4" th:if="${!otherRooms.isEmpty()}">
+            <h2 class="h2 mb-4">You may also like</h2>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4" th:each="other : ${otherRooms}">
+                    <article th:replace="~{fragments/layout :: roomCard(${other}, ${null}, ${null}, ${null})}"></article>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<div class="mt-5"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

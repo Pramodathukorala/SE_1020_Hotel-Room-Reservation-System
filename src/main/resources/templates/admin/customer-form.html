@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${customerId == null} ? 'Register customer' : 'Edit customer')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('customers')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb"><a th:href="@{/admin/customers}">Customers</a> / <span th:text="${customerId == null} ? 'New' : ${customerId}">New</span></div>
+                <h1 th:text="${customerId == null} ? 'Register a customer' : 'Edit customer'">Register</h1>
+            </div>
+            <a class="btn btn-outline-navy btn-sm" th:href="${customerId == null} ? @{/admin/customers} : @{/admin/customers/{id}(id=${customerId})}"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        </header>
+
+        <div class="admin-content">
+            <form class="panel" style="max-width:760px" novalidate
+                  th:action="${customerId == null} ? @{/admin/customers} : @{/admin/customers/{id}(id=${customerId})}"
+                  th:object="${customerForm}" method="post">
+                <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="fullName">Full name</label>
+                        <input class="form-control" type="text" th:field="*{fullName}" th:errorclass="is-invalid" maxlength="80" autocomplete="off">
+                        <div class="invalid-feedback" th:errors="*{fullName}">error</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="email">Email</label>
+                        <input class="form-control" type="email" th:field="*{email}" th:errorclass="is-invalid" autocomplete="off">
+                        <div class="invalid-feedback" th:errors="*{email}">error</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="phone">Phone</label>
+                        <input class="form-control" type="tel" th:field="*{phone}" th:errorclass="is-invalid" placeholder="+94 77 123 4567" autocomplete="off">
+                        <div class="invalid-feedback" th:errors="*{phone}">error</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="address">Address</label>
+                        <textarea class="form-control" rows="2" th:field="*{address}" th:errorclass="is-invalid" maxlength="200"></textarea>
+                        <div class="invalid-feedback" th:errors="*{address}">error</div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-gold" type="submit"><i class="bi bi-check2 me-1"></i><span th:text="${customerId == null} ? 'Register customer' : 'Save changes'">Save</span></button>
+                    <a class="btn btn-outline-navy" th:href="@{/admin/customers}">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

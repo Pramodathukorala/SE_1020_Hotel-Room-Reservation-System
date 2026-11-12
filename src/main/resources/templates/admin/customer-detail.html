@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${customer.fullName})}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('customers')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb"><a th:href="@{/admin/customers}">Customers</a> / <span th:text="${customer.id}">C001</span></div>
+                <h1 th:text="${customer.fullName}">Name</h1>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-navy btn-sm" th:href="@{/admin/customers/{id}/edit(id=${customer.id})}"><i class="bi bi-pencil me-1"></i>Edit</a>
+                <a class="btn btn-gold btn-sm" th:href="@{/admin/reservations/new(customerId=${customer.id})}"><i class="bi bi-calendar-plus me-1"></i>New reservation</a>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <div class="row g-4">
+                <div class="col-xl-4">
+                    <section class="panel text-center">
+                        <span class="avatar avatar-lg mb-3" th:text="${customer.initials}">NP</span>
+                        <h2 class="h3 mb-1" th:text="${customer.fullName}">Name</h2>
+                        <p class="mono text-muted-soft mb-4" th:text="${customer.id}">C001</p>
+                        <div class="text-start d-grid gap-3">
+                            <div><div class="small text-muted-soft">Email</div><a th:href="'mailto:' + ${customer.email}" th:text="${customer.email}">email</a></div>
+                            <div><div class="small text-muted-soft">Phone</div><span th:text="${customer.phone}">phone</span></div>
+                            <div><div class="small text-muted-soft">Address</div><span th:text="${customer.address}">address</span></div>
+                        </div>
+                        <hr class="my-4">
+                        <form th:action="@{/admin/customers/{id}/delete(id=${customer.id})}" method="post"
+                              th:attr="data-confirm=${customer.fullName} + ' will be permanently deleted.'"
+                              data-confirm-title="Delete this customer?" data-confirm-button="Delete customer">
+                            <button class="btn btn-ghost-danger btn-sm" type="submit"><i class="bi bi-trash me-1"></i>Delete customer</button>
+                        </form>
+                    </section>
+                </div>
+                <div class="col-xl-8">
+                    <section class="table-card">
+                        <div class="table-toolbar"><h2>Reservation history</h2><span class="small text-muted-soft" th:text="${reservations.size()} + ' booking(s)'">0</span></div>
+                        <div class="table-responsive" th:if="${!reservations.isEmpty()}">
+                            <table class="table table-luxe">
+                                <thead><tr><th scope="col">Reference</th><th scope="col">Room</th><th scope="col">Stay</th><th scope="col">Status</th><th scope="col" class="text-end">Total</th></tr></thead>
+                                <tbody>
+                                <tr th:each="d : ${reservations}">
+                                    <td><a class="mono" th:href="@{/admin/reservations/{id}(id=${d.reservation.id})}" th:text="${d.reservation.id}">RES</a></td>
+                                    <td th:text="${d.room != null ? d.room.roomNumber + ' · ' + d.room.name : d.reservation.roomId}">Room</td>
+                                    <td class="small" th:text="${@fmt.shortDate(d.reservation.checkIn)} + ' → ' + ${@fmt.shortDate(d.reservation.checkOut)} + ' ' + ${#temporals.year(d.reservation.checkOut)}">dates</td>
+                                    <td><span class="pill" th:classappend="${d.reservation.active} ? 'pill-confirmed' : 'pill-cancelled'" th:text="${d.reservation.status.displayName}">Confirmed</span></td>
+                                    <td class="text-end" th:text="${@fmt.money(d.reservation.totalPrice)}">LKR</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-5 text-center text-muted-soft" th:if="${reservations.isEmpty()}">
+                            <i class="bi bi-journal fs-2 text-gold"></i>
+                            <p class="mt-2 mb-0">No reservations yet.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

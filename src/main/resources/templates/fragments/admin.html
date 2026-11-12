@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ============ admin sidebar ============ -->
+<aside th:fragment="sidebar(active)" class="admin-sidebar" id="adminSidebar" aria-label="Admin navigation">
+    <a class="brand" th:href="@{/admin}">
+        <span class="brand-mark">A</span>
+        <span><span class="brand-name">The Aurelia</span><span class="brand-sub">Admin Console</span></span>
+    </a>
+    <nav class="admin-nav">
+        <div class="admin-nav-label">Overview</div>
+        <a th:href="@{/admin}" th:classappend="${active == 'dashboard'} ? 'active'"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+        <div class="admin-nav-label">Manage</div>
+        <a th:href="@{/admin/rooms}" th:classappend="${active == 'rooms'} ? 'active'"><i class="bi bi-door-open"></i>Rooms</a>
+        <a th:href="@{/admin/customers}" th:classappend="${active == 'customers'} ? 'active'"><i class="bi bi-people"></i>Customers</a>
+        <a th:href="@{/admin/reservations}" th:classappend="${active == 'reservations'} ? 'active'"><i class="bi bi-journal-bookmark"></i>Reservations</a>
+        <div class="admin-nav-label">Quick actions</div>
+        <a th:href="@{/admin/reservations/new}"><i class="bi bi-calendar-plus"></i>New reservation</a>
+        <a th:href="@{/admin/rooms/new}"><i class="bi bi-plus-square"></i>Add room</a>
+        <a th:href="@{/admin/customers/new}"><i class="bi bi-person-plus"></i>Register customer</a>
+    </nav>
+    <div class="sidebar-foot">
+        <a class="text-reset d-flex align-items-center gap-2" th:href="@{/}"><i class="bi bi-box-arrow-up-right"></i>View public website</a>
+    </div>
+</aside>
+
+<!-- ============ mobile top bar ============ -->
+<div th:fragment="mobileBar" class="admin-mobile-bar">
+    <span class="brand-name">The Aurelia</span>
+    <button class="btn btn-sm btn-outline-light-soft" type="button" data-sidebar-toggle aria-controls="adminSidebar" aria-expanded="false">
+        <i class="bi bi-list"></i><span class="visually-hidden">Open menu</span>
+    </button>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rooms · Admin')}"></head>
+<body class="admin-body">
+<div th:replace="~{fragments/admin :: mobileBar}"></div>
+<div class="admin-shell">
+    <aside th:replace="~{fragments/admin :: sidebar('rooms')}"></aside>
+    <div class="admin-backdrop"></div>
+
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div>
+                <div class="crumb">Admin / Rooms</div>
+                <h1>Room management</h1>
+            </div>
+            <a class="btn btn-gold btn-sm" th:href="@{/admin/rooms/new}"><i class="bi bi-plus-lg me-1"></i>Add room</a>
+        </header>
+
+        <div class="admin-content">
+            <section class="table-card">
+                <div class="table-toolbar">
+                    <form class="d-flex flex-wrap gap-2 flex-fill" th:action="@{/admin/rooms}" method="get" role="search">
+                        <div class="search-input flex-fill" style="min-width:220px;max-width:380px">
+                            <i class="bi bi-search"></i>
+                            <label class="visually-hidden" for="room-q">Search rooms</label>
+                            <input class="form-control" type="search" id="room-q" name="q" th:value="${q}" placeholder="Number, name, amenity...">
+                        </div>
+                        <label class="visually-hidden" for="room-type">Room type</label>
+                        <select class="form-select" id="room-type" name="type" style="max-width:190px">
+                            <option value="">All types</option>
+                            <option th:each="t : ${roomTypes}" th:value="${t}" th:text="${t.displayName}" th:selected="${type == t}">Suite</option>
+                        </select>
+                        <button class="btn btn-navy" type="submit">Filter</button>
+                        <a class="btn btn-outline-navy" th:href="@{/admin/rooms}" th:if="${q != null or type != null}">Clear</a>
+                    </form>
+                    <span class="small text-muted-soft"><span th:text="${rooms.size()}">0</span> of <span th:text="${totalRooms}">0</span> rooms</span>
+                </div>
+
+                <div class="table-responsive" th:if="${!rooms.isEmpty()}">
+                    <table class="table table-luxe">
+                        <thead>
+                        <tr>
+                            <th scope="col">Room</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Capacity</th>
+                            <th scope="col">Price / night</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="room : ${rooms}">
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <img class="table-thumb" th:src="@{${room.imageUrl}}" th:alt="${room.name}">
+                                    <div>
+                                        <div class="fw-medium" th:text="${room.name}">Name</div>
+                                        <div class="small text-muted-soft"><span class="mono" th:text="${room.id}">R001</span> · Room <span th:text="${room.roomNumber}">101</span></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td th:text="${room.type.displayName}">Suite</td>
+                            <td><i class="bi bi-people me-1 text-gold"></i><span th:text="${room.capacity}">2</span></td>
+                            <td class="fw-medium" th:text="${@fmt.money(room.basePrice)}">LKR</td>
+                            <td><span class="pill" th:classappend="${room.underMaintenance} ? 'pill-maintenance' : 'pill-available'"
+                                      th:text="${room.underMaintenance} ? 'Maintenance' : 'Open'">Open</span></td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/rooms/{id}(id=${room.id})}" title="View on website" target="_blank" rel="noopener">
+                                    <i class="bi bi-eye"></i><span class="visually-hidden" th:text="'View ' + ${room.name}">View</span></a>
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/reservations/new(roomId=${room.id})}" title="Book this room">
+                                    <i class="bi bi-calendar-plus"></i><span class="visually-hidden">Book</span></a>
+                                <a class="btn btn-icon btn-outline-navy" th:href="@{/admin/rooms/{id}/edit(id=${room.id})}" title="Edit">
+                                    <i class="bi bi-pencil"></i><span class="visually-hidden" th:text="'Edit ' + ${room.name}">Edit</span></a>
+                                <form class="d-inline" th:action="@{/admin/rooms/{id}/delete(id=${room.id})}" method="post"
+                                      th:attr="data-confirm='Room ' + ${room.roomNumber} + ' (' + ${room.name} + ') will be permanently deleted.'"
+                                      data-confirm-title="Delete this room?" data-confirm-button="Delete room">
+                                    <button class="btn btn-icon btn-ghost-danger" type="submit" title="Delete">
+                                        <i class="bi bi-trash"></i><span class="visually-hidden" th:text="'Delete ' + ${room.name}">Delete</span></button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-5 text-center text-muted-soft" th:if="${rooms.isEmpty()}">
+                    <i class="bi bi-door-closed fs-2 text-gold"></i>
+                    <p class="mt-2 mb-3">No rooms match your search.</p>
+                    <a class="btn btn-sm btn-gold" th:href="@{/admin/rooms/new}">Add a room</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

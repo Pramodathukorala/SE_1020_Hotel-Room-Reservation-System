@@ -1,81 +1,177 @@
-# Aurelia — Hotel Room Reservation System
+# The Aurelia — Hotel Room Reservation System
 
-SE1020 individual OOP project: a Spring Boot and Thymeleaf hotel application with TXT-file persistence. The visual identity uses warm ivory, forest charcoal, champagne gold and coastal photography.
+**SE1020 Object-Oriented Programming project** · Java 21 · Spring Boot 3.5 · Thymeleaf · Bootstrap 5 · text-file persistence
 
-## Run locally
+A web-based hotel reservation system for a fictional boutique hotel, "The Aurelia". Guests can browse rooms, check real availability for their dates, see the exact price of every night, book a room and later look up or cancel their booking. Administrators manage rooms, customers and reservations from a dashboard.
 
-Install **JDK 21** and **Maven 3.9+**. From this repository:
+The project focuses on **object-oriented design in Java**: an abstract `Room` class with three subclasses that each price a night differently, encapsulated entities with validating setters, repository interfaces that hide the file storage, and a layered Controller → Service → Repository → File architecture.
 
-```powershell
-mvn test
+---
+
+## 1. Main features
+
+| Module | What it does |
+|---|---|
+| **Room management** | Add, view, search, filter (type, price, guests), edit, delete rooms. Three room types (Standard, Deluxe, Suite) with type-specific details. Rooms can be put under maintenance. |
+| **Customer management** | Register, view (with booking history), search, edit and delete customers. Email, phone and name validation; duplicate emails are rejected. |
+| **Reservation management** | Create (guest website or admin), view, search, edit, cancel and delete reservations. Real date-overlap checking prevents double booking; totals are calculated automatically with `BigDecimal`. |
+| **Guest website** | Home page with availability search, room catalogue with filters, room details with per-night price breakdown, booking form, confirmation page, "Manage booking" (lookup + cancel). |
+| **Admin dashboard** | Overview cards (rooms, customers, active bookings, reservations), tonight's occupancy, upcoming stays, room status, and full CRUD tables with search and confirmation dialogs. |
+| **Persistence** | `data/rooms.txt`, `data/customers.txt`, `data/reservations.txt` — loaded at start-up, rewritten safely after every change. |
+
+### Booking rules (enforced in `ReservationService`)
+- Room and customer must exist.
+- Check-out must be after check-in; check-in cannot be in the past; at most 30 nights.
+- Guests must be between 1 and the room's capacity.
+- Rooms under maintenance cannot be booked.
+- Two **confirmed** stays in the same room conflict when `newCheckIn < existingCheckOut && newCheckOut > existingCheckIn`. Check-out is exclusive, so a new guest may arrive on the day the previous guest leaves.
+- Cancelled reservations never block a room.
+
+### Pricing rules (polymorphism)
+| Room type | Nightly rate |
+|---|---|
+| `StandardRoom` | base price every night |
+| `DeluxeRoom` | base price; **+10%** on Friday and Saturday nights |
+| `SuiteRoom` | base price; **+15%** on Friday and Saturday nights; **+LKR 5,000** per night with butler service |
+
+## 2. Technology stack
+- **Backend:** Java 21, Spring Boot 3.5.7 (Spring Web MVC, Validation), Maven
+- **Views:** Thymeleaf server-side templates
+- **Frontend:** HTML5, CSS3, vanilla JavaScript, Bootstrap 5.3.3 and Bootstrap Icons 1.11.3 (stored locally in `static/vendor`, so the site works offline)
+- **Fonts:** Cormorant Garamond and Inter (Google Fonts; falls back to Georgia/system fonts when offline)
+- **Storage:** Java NIO file reading/writing (no database)
+- **Tests:** JUnit 5, AssertJ, Spring MockMvc
+
+## 3. Setup requirements
+- JDK **21 or newer** (developed and tested with JDK 23, compiled with `--release 21`)
+- Apache Maven 3.9+
+- Internet access the first time Maven downloads dependencies
+- VS Code with the *Extension Pack for Java* (recommended in `.vscode/extensions.json`)
+
+## 4. How to run
+
+### In VS Code
+1. Open the project folder in VS Code and let the Java extension import the Maven project.
+2. Open **Run and Debug** and choose **"Run Hotel Reservation System"**, or open `HotelReservationApplication.java` and click **Run**.
+3. Visit <http://localhost:8080> (guest website) and <http://localhost:8080/admin> (admin dashboard).
+
+### From a terminal
+```bash
 mvn spring-boot:run
 ```
 
-Open **http://localhost:8080**. Alternatively, package and run:
+On the first run the application creates the `data/` folder with 9 sample rooms and 3 sample customers. No sample reservations are created; every reservation comes from the real booking flow. To start again from the sample data, stop the application and delete the `data/` folder.
 
-```powershell
-mvn package
-java -jar target/reservation-1.0.0.jar
+The data folder can be changed in `src/main/resources/application.properties` (`hotel.storage.data-dir`).
+
+> There is no login: the admin area is open so that it can be demonstrated easily. Authentication is outside the scope of this OOP project.
+
+## 5. Project structure
+
+```
+src/main/java/com/hotel/reservation
+├── HotelReservationApplication.java     Spring Boot entry point
+├── config/        AppConfig (Clock bean), SampleDataInitializer (first-run data)
+├── model/         Room (abstract), StandardRoom, DeluxeRoom, SuiteRoom, RoomType,
+│                  Customer, Reservation, ReservationStatus, StayPeriod, Identifiable
+├── dto/           RoomForm, CustomerForm, ReservationForm, BookingForm (form objects)
+│                  ReservationDetails, BookingQuote, DashboardStats (view records)
+├── repository/    DataRepository<T>, RoomRepository, CustomerRepository, ReservationRepository
+│   └── file/      AbstractFileRepository<T>, FileRoomRepository, FileCustomerRepository,
+│                  FileReservationRepository
+├── service/       RoomService, CustomerService, ReservationService (business rules)
+├── controller/    HomeController, RoomController, BookingController,
+│   │              GlobalControllerAdvice, FormErrors
+│   └── admin/     AdminDashboardController, AdminRoomController,
+│                  AdminCustomerController, AdminReservationController, RoomImages
+├── exception/     HotelException, ResourceNotFoundException, ValidationException,
+│                  BookingConflictException, StorageException
+└── util/          RecordCodec (file line format), Formats (money/date formatting)
+
+src/main/resources
+├── application.properties
+├── templates/     Thymeleaf pages (+ fragments/ and admin/)
+└── static/        css/style.css, js/app.js, images/, vendor/ (Bootstrap)
+
+src/test/java/com/hotel/reservation       automated tests
+docs/                                      class diagram, OOP explanation, viva guide, report
 ```
 
-In VS Code, install Extension Pack for Java and Spring Boot Extension Pack, open this folder, and run `HotelApplication`. The Maven compiler targets Java 21. Development verification on this machine uses the available JDK 23 with Java 21 release compilation; a JDK 21 runtime is recommended for assessment. Maven downloads dependencies on the first run. `.mvn/maven.config` uses an ignored repository-local dependency cache to avoid this machine's unwritable default Maven path.
+## 6. OOP concepts (summary)
+A full explanation with code references is in [docs/OOP_EXPLANATION.md](docs/OOP_EXPLANATION.md).
 
-## Demonstration walkthrough
+| Concept | Where |
+|---|---|
+| **Encapsulation** | Private fields with validating setters in `Room`, `Customer`; `Reservation` changes only through `updateBooking()` and `cancel()`; `getAmenities()` returns a read-only list. |
+| **Inheritance** | `StandardRoom`, `DeluxeRoom`, `SuiteRoom` extend `Room`; `FileRoomRepository` etc. extend `AbstractFileRepository<T>`; custom exceptions extend `HotelException`. |
+| **Polymorphism** | `calculateNightlyRate()`, `getRoomFeatures()` and `getPricingNote()` are overridden; `Room.calculateStayCost()` calls them through a `Room` reference. |
+| **Abstraction** | Abstract `Room` and `AbstractFileRepository`; interfaces `Identifiable` and `DataRepository<T>`. |
+| **Information hiding** | Services depend on repository *interfaces*; only the `repository.file` package knows about text files. |
+| **Overloading** | `Room.calculateStayCost(StayPeriod)` and `calculateStayCost(LocalDate, LocalDate)`; `ReservationService.quote(...)` with and without a reservation to ignore. |
+| **Enums** | `RoomType`, `ReservationStatus` (with behaviour: `blocksAvailability()`). |
+| **Composition / association** | `Reservation` *has a* `StayPeriod`; `Room` owns its amenity list; `Reservation` refers to `Customer` and `Room` by ID. |
 
-1. Visit the home page and explore the three initial Standard, Deluxe and Suite rooms.
-2. Open Hotel desk → Rooms. Add a room, edit its details, view its page, then delete an unused room.
-3. Register a guest with a valid email and phone. Open the guest directory, search, view and edit the profile.
-4. Reserve a room for future dates; the quote updates in the browser and the server calculates the final price.
-5. View and print the confirmation. Search reservations and edit the dates or guest count.
-6. Try another reservation for overlapping dates: the application rejects it. A booking beginning on the previous booking's checkout date succeeds.
-7. Cancel a booking and book its dates again. Cancelled reservations can be permanently deleted.
-8. Restart the application. Room, guest and booking changes remain.
+## 7. CRUD operations
 
-The seeded room base prices are $120, $180 and $280. Nightly prices are $120, $216 and $420 respectively. Deluxe adds 20%; Suite adds 50%. Two nights in the Standard room cost $240. Prices are USD; no tax or payment processing is implemented.
+| Entity | Create | Read | Update | Delete |
+|---|---|---|---|---|
+| Room | `POST /admin/rooms` | `/rooms`, `/rooms/{id}`, `/admin/rooms` | `POST /admin/rooms/{id}` | `POST /admin/rooms/{id}/delete` (refused if the room has reservations) |
+| Customer | `POST /admin/customers`, or automatically when booking | `/admin/customers`, `/admin/customers/{id}` | `POST /admin/customers/{id}` | `POST /admin/customers/{id}/delete` (refused if the customer has reservations) |
+| Reservation | `POST /book` (guest), `POST /admin/reservations` | `/admin/reservations`, `/admin/reservations/{id}`, `/manage-booking` | `POST /admin/reservations/{id}`; cancel: `POST .../cancel`, `POST /manage-booking/cancel` | `POST /admin/reservations/{id}/delete` (cancelled reservations only) |
 
-## Screens and routes
+## 8. File handling
+Each file holds one record per line, with fields separated by `|`. The first line is a `#` comment describing the columns:
 
-| Screen | Route |
-| --- | --- |
-| Home | `/` |
-| Search / availability | `/rooms` |
-| Room details | `/rooms/{id}` |
-| Guest registration | `/customers/register` |
-| Booking / booking update | `/book`, `/book?id={id}` |
-| Confirmation | `/confirmation/{id}` |
-| Reservation management | `/reservations` |
-| Dashboard | `/admin` |
-| Room management | `/admin/rooms` |
-| Guest management / profile | `/admin/customers`, `/admin/customers/{id}` |
+```
+# id|customerId|roomId|checkIn|checkOut|guests|totalPrice|status|createdAt
+RES-0001|C004|R006|2026-11-17|2026-11-20|2|105000.00|CANCELLED|2026-11-12T07:56:14.908548
+```
 
-## Architecture and OOP
+- **Loading:** each repository reads its file once at start-up into a `LinkedHashMap` (ID → object).
+- **Subclasses:** the `type` column in `rooms.txt` decides whether a `StandardRoom`, `DeluxeRoom` or `SuiteRoom` is rebuilt.
+- **Saving:** every create, update or delete rewrites the file. The content is written to `rooms.txt.tmp` first, then moved over the real file in one step (atomic move), so a crash cannot leave a half-written file.
+- **Escaping:** `|`, `\`, line breaks and `;` inside user text are escaped by `RecordCodec`, so input such as `Sea | Sky` cannot break the format.
+- **Bad data:** missing files mean "no records yet"; empty and comment lines are ignored; malformed lines and duplicate IDs are skipped with a warning, and the original file is copied to `*.corrupt-<timestamp>.bak` before it is ever rewritten.
+- **IDs:** `nextId()` finds the highest existing number and adds one (`R010`, `C004`, `RES-0003`), so IDs are never reused while records exist.
 
-`Controller → HotelService → FileHotelService → FileRepository<T> → TXT files`.
+## 9. Screenshots
+These were captured from the running application with headless Chrome while it was being tested. They show test data entered during development.
 
-`Room` is abstract; `StandardRoom`, `DeluxeRoom` and `SuiteRoom` override rate and feature methods. Booking uses a `Room` reference to calculate its subtype's nightly rate at runtime. Private model fields, constructors and accessors demonstrate encapsulation. Service methods return detached copies, so changes must pass validation and safe persistence. All dependencies use constructor injection. See [OOP explanation](docs/OOP_EXPLANATION.md), [actual class diagram](docs/CLASS_DIAGRAM.md), [viva guide](docs/VIVA_PREPARATION.md) and [project report](docs/PROJECT_REPORT.md).
+| Home | Room catalogue |
+|---|---|
+| ![Home page](docs/screenshots/home.jpg) | ![Rooms](docs/screenshots/rooms.jpg) |
+| **Room details & price check** | **Booking form** |
+| ![Room details](docs/screenshots/room-details.jpg) | ![Booking](docs/screenshots/booking.jpg) |
+| **Admin dashboard** | **Admin room form** |
+| ![Admin dashboard](docs/screenshots/admin-dashboard.jpg) | ![Room form](docs/screenshots/admin-room-form.jpg) |
 
-## File storage
+Mobile layout (home and admin reservations): ![Mobile](docs/screenshots/mobile.jpg)
 
-The application creates `data/rooms.txt`, `data/customers.txt` and `data/reservations.txt`. These UTF-8 TXT files contain one JSON record per line; JSON safely escapes punctuation and line breaks. Room records contain a `type` discriminator to restore their subclasses; this is not a database. Dates use `LocalDate`; prices use `BigDecimal`.
+## 10. Testing
+```bash
+mvn test
+```
+52 automated tests in five classes:
 
-Files load at startup. Successful CRUD saves a full snapshot using a temporary file and atomic replacement, retaining a `.bak` of the previous file. The live in-memory snapshot changes only after the write succeeds. Malformed JSON, incomplete fields, missing/duplicate IDs and unknown room subtypes are logged and the affected file becomes read-only to avoid destroying original data. Missing cross-file references stop startup with a repair message. To recover: stop the application, copy files for safekeeping, repair the reported records or restore the `.bak`, then restart. Do not edit live files while the server runs. Manual corruption of additional business constraints requires manual repair; files are intended to be maintained through the UI.
+| Test class | Covers |
+|---|---|
+| `ModelTest` | polymorphic nightly rates, overloaded `calculateStayCost`, `StayPeriod` overlap rule, encapsulation guards, cancel behaviour |
+| `RoomAndCustomerServiceTest` | room create/update (including changing type)/delete/search, duplicate room numbers, customer register/update/delete/search, duplicate and invalid emails |
+| `ReservationServiceTest` | booking, Standard/Deluxe/Suite totals, double-booking rejection, same-day turnover, cancellation releasing the room, past/invalid dates, capacity, maintenance, unknown IDs, edits, delete rules |
+| `FilePersistenceTest` | data surviving a restart (subclasses rebuilt), escaping special characters, malformed lines skipped and backed up, empty/missing files, no leftover temp files |
+| `WebFlowTest` | full Spring application through HTTP: pages render, guest booking → confirmation, double booking shown to the user, validation messages, admin CRUD |
 
-UUIDs prevent sequence reuse. A service-wide synchronization lock makes overlap checking and booking atomic inside this JVM. **Run only one application process per data directory.** Files are not shared-process transactional storage. Change the directory using `--hotel.data-dir=another-directory`. The three sample rooms are created only if `rooms.txt` does not yet exist; deleting every room does not recreate samples. No customer personal data is seeded. Runtime files and backups are excluded from Git.
+The service tests use a fixed `Clock` (Monday 7 January 2030), so weekend pricing and "past date" checks give the same result on any day. Each test uses its own temporary data folder and never touches `data/`.
 
-Room and customer deletion is blocked while any reservation references them, preserving history. First cancel and delete the associated reservations if removal is necessary. Maintenance and capacity changes cannot invalidate upcoming bookings. Editing a reservation re-quotes it at current rates; later room price changes alone do not alter existing totals.
+## 11. Documentation
+- [docs/CLASS_DIAGRAM.md](docs/CLASS_DIAGRAM.md) — UML class diagrams (Mermaid)
+- [docs/OOP_EXPLANATION.md](docs/OOP_EXPLANATION.md) — OOP principles with code references
+- [docs/VIVA_PREPARATION.md](docs/VIVA_PREPARATION.md) — likely viva questions and answers
+- [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) — technical report
 
-## Verification
+## 12. GitHub
+Repository: <https://github.com/Pramodathukorala/SE_1020_Hotel-Room-Reservation-System>
 
-Run `mvn test` for service tests and full Thymeleaf/MockMvc request tests. They cover CRUD, validation, overlap shapes, adjacent bookings, cancellation, price calculations, restart persistence, subtype restoration, protected relationships, concurrent booking and failed writes. Tests use temporary storage, never live `data/`. See [verification record](docs/VERIFICATION.md) for the recorded execution result and limits.
+Individual project for SE1020. Runtime data (`data/`) and build output (`target/`) are excluded by `.gitignore`.
 
-For an optional real HTTP and full-process restart check, first package the JAR, then run `node scripts/smoke.cjs` (Node 18+). It uses an isolated directory under `target/`, starts its own JVM on a random local port, and stops it when finished. Node is not needed to run the application itself.
-
-## Scope and assets
-
-This is a **local university demonstration**, with no authentication, authorization, CSRF protection or payments. The hotel desk and guest records are accessible to local application visitors. Use fictional guest information. Do not expose it publicly without adding access control and appropriate data protection. The application binds to loopback by default.
-
-Bootstrap 5, Google Fonts and Unsplash images load from external CDNs; core styling, navigation and form logic are local and remain usable if those resources are unavailable. Photo containers retain colored fallbacks; typography falls back to Georgia/Arial. Photographs are served by Unsplash under the [Unsplash license](https://unsplash.com/license). External services require internet access.
-
-## Git
-
-The existing Git repository is preserved. Review with `git status` and `git diff --stat`. No remote pushes are performed. Development checkpoints and actual validation are documented in [project report](docs/PROJECT_REPORT.md); they are not claims of historical commits or authorship.
+Room and hotel photographs are from [Unsplash](https://unsplash.com) and are used under the Unsplash License. The hotel is fictional.
