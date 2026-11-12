@@ -11,10 +11,8 @@ import com.hotel.reservation.model.StayPeriod;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 
 import static com.hotel.reservation.TestHotel.day;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,9 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Reservation rules: availability, double booking, dates, capacity, pricing, update, cancel, delete. */
 class ReservationServiceTest {
-
-    @TempDir
-    Path dataDir;
 
     private TestHotel hotel;
     private Room standard;   // R001 - LKR 10,000 flat, 2 guests
@@ -34,7 +29,7 @@ class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
-        hotel = new TestHotel(dataDir);
+        hotel = new TestHotel();
         standard = hotel.roomService.create(TestHotel.standardRoom("101", "10000", 2));
         deluxe = hotel.roomService.create(TestHotel.deluxeRoom("201", "20000", 3));
         suite = hotel.roomService.create(TestHotel.suiteRoom("301", "40000", 4, true));

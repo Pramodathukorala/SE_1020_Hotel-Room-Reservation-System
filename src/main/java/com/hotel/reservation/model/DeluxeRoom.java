@@ -5,43 +5,48 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * INHERITANCE: a DeluxeRoom IS-A Room with a view and an optional balcony.
- * Pricing rule: base price, plus a 10% surcharge on Friday and Saturday nights.
+ * A Deluxe room.
+ *
+ * OOP - INHERITANCE: "extends Room" means a DeluxeRoom IS-A Room.
+ *       It adds two fields of its own: view and balcony.
+ * Pricing rule: base price, plus 10% on Friday and Saturday nights.
  */
-public class DeluxeRoom extends Room {
+public class DeluxeRoom extends Room {   // OOP - INHERITANCE
 
-    public static final BigDecimal WEEKEND_MULTIPLIER = new BigDecimal("1.10");
+    public static final BigDecimal WEEKEND_MULTIPLIER = new BigDecimal("1.10");   // +10%
 
+    // OOP - ENCAPSULATION: extra fields only Deluxe rooms have, kept private
     private String view;        // e.g. "Garden", "Ocean"
     private boolean balcony;
 
     public DeluxeRoom(String id, String roomNumber, String name, String description, BigDecimal basePrice,
                       int capacity, List<String> amenities, String imageUrl, boolean underMaintenance,
                       String view, boolean balcony) {
+        // OOP - INHERITANCE: call the parent (Room) constructor first
         super(id, roomNumber, name, description, basePrice, capacity, amenities, imageUrl, underMaintenance);
         setView(view);
         this.balcony = balcony;
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM
     public RoomType getType() {
         return RoomType.DELUXE;
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: a different pricing rule from StandardRoom
     public BigDecimal calculateNightlyRate(LocalDate night) {
-        if (isWeekendNight(night)) {
-            return money(getBasePrice().multiply(WEEKEND_MULTIPLIER));
+        if (isWeekendNight(night)) {                                  // Friday or Saturday?
+            return money(getBasePrice().multiply(WEEKEND_MULTIPLIER)); // add 10%
         }
-        return getBasePrice();
+        return getBasePrice();                                         // normal price
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM
     public String getPricingNote() {
         return "Base rate Sunday-Thursday; +10% on Friday and Saturday nights.";
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: parent's features + view + balcony
     public List<String> getRoomFeatures() {
         List<String> features = super.getRoomFeatures();
         features.add(0, view + " view");
@@ -51,6 +56,7 @@ public class DeluxeRoom extends Room {
         return features;
     }
 
+    // OOP - ENCAPSULATION: getters and setters
     public String getView() {
         return view;
     }

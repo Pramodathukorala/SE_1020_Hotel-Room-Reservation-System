@@ -1,8 +1,9 @@
 package com.hotel.reservation.model;
 
 /**
- * The three room categories offered by the hotel.
- * An enum guarantees that only valid room types can exist in the system.
+ * The three room types. An enum is a fixed list of values, so no other
+ * room type can ever exist. (Each value matches one Room subclass.)
+ * OOP - ENCAPSULATION: displayName is private with a getter.
  */
 public enum RoomType {
     STANDARD("Standard Room"),

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin sign in')}"></head>
+<body>
+<main class="admin-auth">
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <span class="brand-mark mx-auto mb-3" style="width:52px;height:52px;font-size:1.7rem">A</span>
+            <div class="eyebrow mb-1">Staff only</div>
+            <h1 class="h2 mb-1">Admin console</h1>
+            <p class="text-muted-soft small mb-0">Sign in with your administrator username.</p>
+        </div>
+
+        <div class="alert alert-danger d-flex gap-2" th:if="${error}" role="alert"><i class="bi bi-shield-exclamation"></i><span th:text="${error}">error</span></div>
+        <div class="alert alert-success d-flex gap-2" th:if="${success}" role="status"><i class="bi bi-check-circle-fill"></i><span th:text="${success}">ok</span></div>
+
+        <form th:action="@{/admin/login}" method="post">
+            <input type="hidden" name="next" th:value="${next}" th:if="${next != null}">
+            <div class="mb-3">
+                <label class="form-label" for="username">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                    <input class="form-control" type="text" id="username" name="username" th:value="${username}" autocomplete="username" required autofocus>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label" for="password">Password</label>
+                <div class="password-field">
+                    <input class="form-control" type="password" id="password" name="password" autocomplete="current-password" required>
+                    <button class="toggle" type="button" data-password-toggle="password" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                </div>
+            </div>
+            <button class="btn btn-navy btn-lg w-100" type="submit"><i class="bi bi-lock me-1"></i>Sign in</button>
+        </form>
+        <p class="text-center mt-4 mb-0"><a class="small" th:href="@{/}"><i class="bi bi-arrow-left me-1"></i>Back to the hotel website</a></p>
+    </div>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

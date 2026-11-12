@@ -6,6 +6,14 @@ Notation: `+` public, `-` private, `#` protected, `*` abstract, `$` static. A ho
 
 ---
 
+## Room class hierarchy (image)
+
+![Room class diagram](diagrams/room-class-diagram.png)
+
+`Room` is abstract and implements `Identifiable`. `StandardRoom`, `DeluxeRoom` and `SuiteRoom` extend it and override `getType()`, `calculateNightlyRate()`, `getPricingNote()` and `getRoomFeatures()`, shown in gold. `Room` uses `RoomType` and `StayPeriod`. A vector version for the report is in `diagrams/room-class-diagram.svg`.
+
+---
+
 ## 1. Domain model (package `model`)
 
 ```mermaid
@@ -157,7 +165,80 @@ classDiagram
 
 ---
 
-## 2. Persistence layer (package `repository`)
+## 1b. Accounts and sign-in (packages `model`, `security`, `service`)
+
+```mermaid
+classDiagram
+    direction TB
+
+    class UserAccount {
+        <<abstract>>
+        -id String
+        -passwordHash String
+        -createdAt LocalDateTime
+        +getRole()* Role
+        +getHomePage()* String
+        +passwordMatches(String raw, PasswordEncoder encoder) boolean
+        +changePasswordHash(String hash) void
+    }
+    class AdminAccount {
+        -username String
+        -fullName String
+        +create(id, username, fullName, rawPassword, encoder, createdAt)$ AdminAccount
+        +getRole() Role
+        +getHomePage() String
+    }
+    class GuestAccount {
+        +getRole() Role
+        +getHomePage() String
+        +getCustomerId() String
+    }
+    class Role {
+        <<enumeration>>
+        ADMIN
+        GUEST
+    }
+    class SessionUser {
+        <<record>>
+        accountId String
+        displayName String
+        role Role
+        +isAdmin() boolean
+        +firstName() String
+    }
+    class AccountService {
+        +registerGuest(RegistrationForm) GuestAccount
+        +authenticateGuest(String email, String password) SessionUser
+        +authenticateAdmin(String username, String password) SessionUser
+        +createAdmin(String username, String fullName, String password) AdminAccount
+        -toSessionUser(UserAccount, String, String, String) SessionUser
+    }
+    class AuthInterceptor {
+        +preHandle(request, response, handler) boolean
+    }
+    class CurrentUser {
+        <<utility>>
+        +admin(HttpSession)$ SessionUser
+        +guest(HttpSession)$ SessionUser
+        +signIn(HttpServletRequest, SessionUser)$ void
+    }
+
+    Identifiable <|.. UserAccount
+    UserAccount <|-- AdminAccount
+    UserAccount <|-- GuestAccount
+    UserAccount ..> Role
+    GuestAccount "0..1" --> "1" Customer : id = customer id
+    AccountService ..> UserAccount : checks password
+    AccountService ..> SessionUser : creates
+    AuthInterceptor ..> CurrentUser : reads session
+    CurrentUser ..> SessionUser
+```
+
+`AccountService` depends on `GuestAccountRepository`, `AdminRepository`, `CustomerRepository`, `CustomerService` and a `PasswordEncoder` (BCrypt). `JdbcAdminRepository` and `JdbcGuestAccountRepository` extend `AbstractJdbcRepository` exactly like the other repositories.
+
+---
+
+## 2. Persistence layer (package `repository`, MySQL via JDBC)
 
 ```mermaid
 classDiagram
@@ -187,68 +268,120 @@ classDiagram
         +findByCustomerId(String) List~Reservation~
     }
 
-    class AbstractFileRepository~T~ {
+    class AbstractJdbcRepository~T~ {
         <<abstract>>
-        -file Path
+        #jdbc JdbcTemplate
+        -tableName String
         -idPrefix String
         -idDigits int
-        -records Map~String,T~
-        -existedBeforeStartup boolean
-        -skippedRecordCount int
-        #fileHeader()* String
-        #toFields(T entity)* List~String~
-        #fromFields(String[] fields)* T
-        +isFirstRun() boolean
-        +getSkippedRecordCount() int
-        -load() void
-        -writeFile() void
-        -backUpOriginalFile() void
-        #requireFieldCount(String[], int)$ void
-        #parseBoolean(String)$ boolean
+        #mapRow(ResultSet rs)* T
+        #insert(T entity)* void
+        #update(T entity)* void
+        #loadDetails(List~T~ entities) void
+        #query(String sql, Object... parameters) List~T~
+        +save(T entity) T
+        +nextId() String
     }
 
-    class FileRoomRepository {
-        #fileHeader() String
-        #toFields(Room) List~String~
-        #fromFields(String[]) Room
+    class JdbcRoomRepository {
+        #mapRow(ResultSet) Room
+        #insert(Room) void
+        #update(Room) void
+        #loadDetails(List~Room~) void
+        +save(Room) Room
         +findByRoomNumber(String) Optional~Room~
+        -saveAmenities(Room) void
+        -typeSpecificValues(Room)$ Object[]
     }
-    class FileCustomerRepository {
-        #fileHeader() String
-        #toFields(Customer) List~String~
-        #fromFields(String[]) Customer
+    class JdbcCustomerRepository {
+        #mapRow(ResultSet) Customer
+        #insert(Customer) void
+        #update(Customer) void
         +findByEmail(String) Optional~Customer~
     }
-    class FileReservationRepository {
-        #fileHeader() String
-        #toFields(Reservation) List~String~
-        #fromFields(String[]) Reservation
+    class JdbcReservationRepository {
+        #mapRow(ResultSet) Reservation
+        #insert(Reservation) void
+        #update(Reservation) void
         +findByRoomId(String) List~Reservation~
         +findByCustomerId(String) List~Reservation~
-    }
-
-    class RecordCodec {
-        <<utility>>
-        +encode(List~String~)$ String
-        +decode(String)$ String[]
-        +encodeList(List~String~)$ String
-        +decodeList(String)$ List~String~
     }
 
     DataRepository <|-- RoomRepository
     DataRepository <|-- CustomerRepository
     DataRepository <|-- ReservationRepository
-    DataRepository <|.. AbstractFileRepository
-    AbstractFileRepository <|-- FileRoomRepository
-    AbstractFileRepository <|-- FileCustomerRepository
-    AbstractFileRepository <|-- FileReservationRepository
-    RoomRepository <|.. FileRoomRepository
-    CustomerRepository <|.. FileCustomerRepository
-    ReservationRepository <|.. FileReservationRepository
-    AbstractFileRepository ..> RecordCodec : uses
+    DataRepository <|.. AbstractJdbcRepository
+    AbstractJdbcRepository <|-- JdbcRoomRepository
+    AbstractJdbcRepository <|-- JdbcCustomerRepository
+    AbstractJdbcRepository <|-- JdbcReservationRepository
+    RoomRepository <|.. JdbcRoomRepository
+    CustomerRepository <|.. JdbcCustomerRepository
+    ReservationRepository <|.. JdbcReservationRepository
 ```
 
-`AbstractFileRepository<T>` follows the **Template Method** pattern. It implements loading, saving, safe file replacement and ID generation once. Each subclass only supplies `fileHeader()`, `toFields()` and `fromFields()`.
+`AbstractJdbcRepository<T>` follows the **Template Method** pattern. It implements `findAll`, `findById`, `existsById`, `save` (INSERT or UPDATE), `deleteById`, `count` and `nextId` once. Each subclass supplies only `mapRow()` (row → object), `insert()` and `update()`. `JdbcRoomRepository` also overrides `loadDetails()` to read amenities and `save()` to write them in the same transaction.
+
+### Database tables (entity–relationship view)
+
+```mermaid
+erDiagram
+    rooms ||--o{ room_amenities : "has"
+    customers ||--o| guest_accounts : "may have a login"
+    rooms ||--o{ reservations : "is booked in"
+    customers ||--o{ reservations : "makes"
+
+    rooms {
+        VARCHAR id PK
+        VARCHAR room_type "STANDARD, DELUXE or SUITE"
+        VARCHAR room_number UK
+        VARCHAR name
+        VARCHAR description
+        DECIMAL base_price
+        INT capacity
+        VARCHAR image_url
+        BOOLEAN under_maintenance
+        VARCHAR bed_type "Standard only"
+        VARCHAR view_name "Deluxe only"
+        BOOLEAN balcony "Deluxe only"
+        INT bedrooms "Suite only"
+        BOOLEAN butler_service "Suite only"
+    }
+    room_amenities {
+        VARCHAR room_id PK,FK
+        INT sort_order PK
+        VARCHAR amenity
+    }
+    customers {
+        VARCHAR id PK
+        VARCHAR full_name
+        VARCHAR email UK
+        VARCHAR phone
+        VARCHAR address
+    }
+    guest_accounts {
+        VARCHAR id PK,FK "same as customers.id"
+        VARCHAR password_hash "BCrypt"
+        DATETIME created_at
+    }
+    admins {
+        VARCHAR id PK
+        VARCHAR username UK
+        VARCHAR full_name
+        VARCHAR password_hash "BCrypt"
+        DATETIME created_at
+    }
+    reservations {
+        VARCHAR id PK
+        VARCHAR customer_id FK
+        VARCHAR room_id FK
+        DATE check_in
+        DATE check_out
+        INT guests
+        DECIMAL total_price
+        VARCHAR status
+        DATETIME created_at
+    }
+```
 
 ---
 
@@ -340,7 +473,7 @@ classDiagram
     ReservationService --> CustomerRepository
 ```
 
-All dependencies are passed in through constructors (constructor-based dependency injection). Services depend only on the repository **interfaces**, never on the `File...Repository` classes.
+All dependencies are passed in through constructors (constructor-based dependency injection). Services depend only on the repository **interfaces**, never on the `Jdbc...Repository` classes.
 
 ---
 
@@ -424,12 +557,10 @@ classDiagram
         +getField() String
     }
     class BookingConflictException
-    class StorageException
     RuntimeException <|-- HotelException
     HotelException <|-- ResourceNotFoundException
     HotelException <|-- ValidationException
     HotelException <|-- BookingConflictException
-    HotelException <|-- StorageException
 ```
 
 `DashboardStats` has more numeric fields than shown (`roomsUnderMaintenance`, `totalCustomers`, `totalReservations`, `cancelledReservations`, `arrivalsToday`, `occupiedTonight`). They are omitted here for space.

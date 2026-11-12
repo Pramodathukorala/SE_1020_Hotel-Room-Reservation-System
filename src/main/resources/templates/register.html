@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Create an account')}"></head>
+<body>
+<main class="auth-shell">
+    <aside class="auth-visual" th:style="'background-image: url(' + @{/images/rooms/deluxe-garden.jpg} + ')'">
+        <div>
+            <span class="eyebrow" style="color:var(--gold-soft)">Join The Aurelia</span>
+            <h2 class="mb-3">Book faster. Manage every stay.</h2>
+            <p class="mb-0">With an account you can see all your bookings, change dates, cancel online and keep your details on file.</p>
+        </div>
+    </aside>
+
+    <section class="auth-panel">
+        <div class="auth-card" style="max-width:520px">
+            <a class="brand" th:href="@{/}">
+                <span class="brand-mark">A</span>
+                <span><span class="brand-name">The Aurelia</span><span class="brand-sub">Boutique Hotel &amp; Spa</span></span>
+            </a>
+            <h1 class="display-6 mb-2">Create an account</h1>
+            <p class="text-muted-soft mb-4">Already booked with us? Use the same email and your earlier bookings will appear in your account.</p>
+
+            <form th:action="@{/register}" th:object="${registrationForm}" method="post" novalidate>
+                <div class="alert alert-danger d-flex gap-2" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div><p class="mb-0" th:each="err : ${#fields.globalErrors()}" th:text="${err}">error</p></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="customer.fullName">Full name</label>
+                        <input class="form-control" type="text" th:field="*{customer.fullName}" th:errorclass="is-invalid" autocomplete="name" maxlength="80">
+                        <div class="invalid-feedback" th:errors="*{customer.fullName}">error</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="customer.email">Email</label>
+                        <input class="form-control" type="email" th:field="*{customer.email}" th:errorclass="is-invalid" autocomplete="email">
+                        <div class="invalid-feedback" th:errors="*{customer.email}">error</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="customer.phone">Phone</label>
+                        <input class="form-control" type="tel" th:field="*{customer.phone}" th:errorclass="is-invalid" autocomplete="tel" placeholder="+94 77 123 4567">
+                        <div class="invalid-feedback" th:errors="*{customer.phone}">error</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="customer.address">Address</label>
+                        <input class="form-control" type="text" th:field="*{customer.address}" th:errorclass="is-invalid" autocomplete="street-address" maxlength="200">
+                        <div class="invalid-feedback" th:errors="*{customer.address}">error</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="password-field">
+                            <input class="form-control" type="password" th:field="*{password}" th:errorclass="is-invalid" autocomplete="new-password">
+                            <button class="toggle" type="button" data-password-toggle="password" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                        </div>
+                        <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">error</div>
+                        <div class="form-text">At least 8 characters, with a letter and a number.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="confirmPassword">Confirm password</label>
+                        <input class="form-control" type="password" th:field="*{confirmPassword}"
+                               th:classappend="${#fields.hasErrors('confirmPassword') or #fields.hasErrors('passwordConfirmed')} ? 'is-invalid'" autocomplete="new-password">
+                        <div class="invalid-feedback" th:errors="*{confirmPassword}">error</div>
+                        <div class="invalid-feedback" th:errors="*{passwordConfirmed}">error</div>
+                    </div>
+                </div>
+                <button class="btn btn-gold btn-lg w-100 mt-4" type="submit">Create account</button>
+            </form>
+
+            <p class="auth-switch text-center mt-4 mb-0">Already have an account? <a th:href="@{/login}">Sign in</a></p>
+            <p class="text-center mt-3 mb-0"><a class="small" th:href="@{/}"><i class="bi bi-arrow-left me-1"></i>Back to the website</a></p>
+        </div>
+    </section>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

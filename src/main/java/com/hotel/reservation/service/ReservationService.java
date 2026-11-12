@@ -52,6 +52,8 @@ public class ReservationService {
 
     public static final int MAX_NIGHTS = 30;
 
+    // OOP - ABSTRACTION / information hiding: only the repository INTERFACES are used here,
+    // so this class does not know how the data is stored (MySQL).
     private final ReservationRepository reservationRepository;
     private final RoomRepository roomRepository;
     private final CustomerRepository customerRepository;
@@ -117,6 +119,43 @@ public class ReservationService {
         return details;
     }
 
+    // ===================================================== SIGNED-IN GUEST
+
+    /**
+     * A booking that belongs to the given customer. A booking of someone else is reported
+     * as "not found", so guests cannot even learn that another person's reference exists.
+     */
+    public ReservationDetails getDetailsForCustomer(String reservationId, String customerId) {
+        return toDetails(findOwned(reservationId, customerId));
+    }
+
+    /** Guest edits their own booking: new dates and guest count, same room. The total is recalculated. */
+    public synchronized Reservation updateForCustomer(String reservationId, String customerId, ReservationForm form) {
+        Reservation reservation = findOwned(reservationId, customerId);
+        form.setCustomerId(customerId);
+        form.setRoomId(reservation.getRoomId());
+        return update(reservationId, form);
+    }
+
+    public synchronized Reservation cancelForCustomer(String reservationId, String customerId) {
+        findOwned(reservationId, customerId);
+        return cancel(reservationId);
+    }
+
+    /** Guests can remove cancelled bookings from their list (same rule as for admins). */
+    public synchronized void deleteForCustomer(String reservationId, String customerId) {
+        findOwned(reservationId, customerId);
+        delete(reservationId);
+    }
+
+    private Reservation findOwned(String reservationId, String customerId) {
+        Reservation reservation = findById(reservationId);
+        if (!reservation.getCustomerId().equals(customerId)) {
+            throw new ResourceNotFoundException("Reservation", reservationId);
+        }
+        return reservation;
+    }
+
     // ============================================================ AVAILABILITY
 
     /**
@@ -162,7 +201,8 @@ public class ReservationService {
         } catch (ValidationException e) {
             return new BookingQuote(room, null, guests, false, e.getMessage(), BigDecimal.ZERO, Map.of());
         }
-        BigDecimal total = room.calculateStayCost(stay);              // polymorphic call
+        // OOP - POLYMORPHISM: "room" may be a Standard, Deluxe or Suite room - each prices nights differently
+        BigDecimal total = room.calculateStayCost(stay);
         Map<LocalDate, BigDecimal> nightly = room.getNightlyBreakdown(stay);
         try {
             checkBookingRules(room, stay, guests, editingReservationId, !stay.equals(originalStay));
@@ -189,6 +229,7 @@ public class ReservationService {
         StayPeriod stay = toStay(checkIn, checkOut);
         checkBookingRules(room, stay, guests, null, true);
 
+        // OOP - POLYMORPHISM: room.calculateStayCost() uses the pricing rule of the real room type
         Reservation reservation = new Reservation(reservationRepository.nextId(), customer.getId(), room.getId(),
                 stay, guests, room.calculateStayCost(stay), ReservationStatus.CONFIRMED, LocalDateTime.now(clock));
         return reservationRepository.save(reservation);
@@ -225,6 +266,8 @@ public class ReservationService {
         boolean datesChanged = !stay.equals(reservation.getStay());
         checkBookingRules(room, stay, nullToZero(form.getGuests()), reservation.getId(), datesChanged);
 
+        // OOP - POLYMORPHISM: new total from the room's own pricing rule
+        // OOP - ENCAPSULATION: the booking is changed only through updateBooking()
         reservation.updateBooking(room.getId(), stay, nullToZero(form.getGuests()), room.calculateStayCost(stay));
         return reservationRepository.save(reservation);
     }

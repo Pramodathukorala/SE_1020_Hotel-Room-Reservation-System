@@ -5,6 +5,7 @@ import com.hotel.reservation.model.DeluxeRoom;
 import com.hotel.reservation.model.StandardRoom;
 import com.hotel.reservation.model.SuiteRoom;
 import com.hotel.reservation.repository.CustomerRepository;
+import com.hotel.reservation.repository.ReservationRepository;
 import com.hotel.reservation.repository.RoomRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,16 +15,14 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Adds sample rooms and sample customers the very first time the application runs.
+ * Adds sample rooms and sample customers when the application starts with an EMPTY database.
  *
- * It only seeds a file that does not exist yet, so records created or deleted by the
- * user are never overwritten on restart. No sample reservations are created - every
- * reservation in the system is made through the real booking workflow.
+ * If the database already contains any room, customer or reservation, nothing is added,
+ * so records created, edited or deleted by the user are never overwritten on restart.
+ * No sample reservations are created - every reservation is made through the real booking workflow.
  */
 @Component
 public class SampleDataInitializer implements ApplicationRunner {
@@ -32,15 +31,15 @@ public class SampleDataInitializer implements ApplicationRunner {
 
     private final RoomRepository roomRepository;
     private final CustomerRepository customerRepository;
-    private final Path dataDirectory;
+    private final ReservationRepository reservationRepository;
     private final boolean enabled;
 
     public SampleDataInitializer(RoomRepository roomRepository, CustomerRepository customerRepository,
-                                 @Value("${hotel.storage.data-dir:data}") String dataDirectory,
-                                 @Value("${hotel.storage.seed-sample-data:true}") boolean enabled) {
+                                 ReservationRepository reservationRepository,
+                                 @Value("${hotel.seed-sample-data:true}") boolean enabled) {
         this.roomRepository = roomRepository;
         this.customerRepository = customerRepository;
-        this.dataDirectory = Path.of(dataDirectory);
+        this.reservationRepository = reservationRepository;
         this.enabled = enabled;
     }
 
@@ -49,11 +48,15 @@ public class SampleDataInitializer implements ApplicationRunner {
         if (!enabled) {
             return;
         }
-        if (!Files.exists(dataDirectory.resolve("rooms.txt")) && roomRepository.count() == 0) {
+        boolean databaseIsEmpty = roomRepository.count() == 0
+                && customerRepository.count() == 0
+                && reservationRepository.count() == 0;
+        if (databaseIsEmpty) {
             seedRooms();
-        }
-        if (!Files.exists(dataDirectory.resolve("customers.txt")) && customerRepository.count() == 0) {
             seedCustomers();
+        } else {
+            log.info("Database contains {} room(s), {} customer(s), {} reservation(s) - no sample data added.",
+                    roomRepository.count(), customerRepository.count(), reservationRepository.count());
         }
     }
 
@@ -95,13 +98,13 @@ public class SampleDataInitializer implements ApplicationRunner {
                 "Our finest residence: two bedrooms, a private dining area and a dedicated butler for your stay.",
                 new BigDecimal("75000"), 5, List.of("Free Wi-Fi", "Private dining", "Soaking tub", "Bar", "Airport transfer", "Spa credit"),
                 img + "suite-royal.jpg", false, 2, true));
-        log.info("First run: added 9 sample rooms to {}", dataDirectory.resolve("rooms.txt"));
+        log.info("Empty database: added 9 sample rooms.");
     }
 
     private void seedCustomers() {
         customerRepository.save(new Customer("C001", "Nimal Perera", "nimal.perera@example.com", "+94 77 123 4567", "12 Galle Road, Colombo 03"));
         customerRepository.save(new Customer("C002", "Ayesha Fernando", "ayesha.fernando@example.com", "+94 71 555 0182", "45 Temple Street, Kandy"));
         customerRepository.save(new Customer("C003", "Daniel Silva", "daniel.silva@example.com", "+94 76 220 9031", "8 Lake Drive, Negombo"));
-        log.info("First run: added 3 sample customers to {}", dataDirectory.resolve("customers.txt"));
+        log.info("Empty database: added 3 sample customers.");
     }
 }

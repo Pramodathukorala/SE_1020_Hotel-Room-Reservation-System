@@ -11,29 +11,37 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * ABSTRACTION + INHERITANCE: Room holds everything common to all rooms,
- * but it is abstract because a "generic" room cannot be priced.
- * Each subclass (StandardRoom, DeluxeRoom, SuiteRoom) supplies its own
- * nightly pricing rule by overriding {@link #calculateNightlyRate(LocalDate)}.
+ * Room = the PARENT class of all hotel rooms.
  *
- * ENCAPSULATION: all fields are private; setters validate their input so a
- * Room object can never hold a negative price or an impossible capacity.
+ * OOP - ABSTRACTION: this class is "abstract", so you cannot create a plain Room.
+ *       A room must be a StandardRoom, DeluxeRoom or SuiteRoom.
+ * OOP - INHERITANCE: StandardRoom, DeluxeRoom and SuiteRoom "extend" this class and
+ *       get all its fields and methods for free.
+ * OOP - ENCAPSULATION: all fields are private. Other classes must use the getters and
+ *       setters, and the setters check the values first.
  */
-public abstract class Room implements Identifiable {
+public abstract class Room implements Identifiable {   // OOP - ABSTRACTION: implements the Identifiable interface
 
+    // Limits used by the checks below
     public static final int MAX_CAPACITY = 10;
+    public static final int MAX_AMENITY_LENGTH = 60;
     private static final BigDecimal MAX_PRICE = new BigDecimal("10000000");
 
-    private final String id;          // never changes after creation
+    // OOP - ENCAPSULATION: every field is private (hidden from other classes)
+    private final String id;          // final = cannot change after the room is created
     private String roomNumber;
     private String name;
     private String description;
-    private BigDecimal basePrice;     // BigDecimal avoids floating-point rounding errors with money
-    private int capacity;
+    private BigDecimal basePrice;     // BigDecimal = exact money values (no rounding errors like double)
+    private int capacity;             // maximum number of guests
     private final List<String> amenities = new ArrayList<>();
     private String imageUrl;
-    private boolean underMaintenance;
+    private boolean underMaintenance; // true = room cannot be booked
 
+    /**
+     * Constructor. It is "protected", so only subclasses can call it (with super(...)).
+     * OOP - ENCAPSULATION: it uses the setters, so even a new room is checked.
+     */
     protected Room(String id, String roomNumber, String name, String description, BigDecimal basePrice,
                    int capacity, List<String> amenities, String imageUrl, boolean underMaintenance) {
         if (id == null || id.isBlank()) {
@@ -50,62 +58,72 @@ public abstract class Room implements Identifiable {
         setUnderMaintenance(underMaintenance);
     }
 
-    // ---------------------------------------------------------------------
-    // Abstract behaviour - every subclass MUST implement these (polymorphism)
-    // ---------------------------------------------------------------------
+    // =====================================================================
+    // OOP - ABSTRACTION: abstract methods (no body here).
+    // Every subclass MUST write its own version (OOP - POLYMORPHISM).
+    // =====================================================================
 
-    /** Which category this room belongs to. */
+    /** Which type of room this is (STANDARD, DELUXE or SUITE). */
     public abstract RoomType getType();
 
-    /** Price for one specific night. Subclasses apply their own rules. */
+    /** Price for ONE night. Each room type has its own pricing rule. */
     public abstract BigDecimal calculateNightlyRate(LocalDate night);
 
-    /** Short human-readable explanation of the pricing rule, shown on the room page. */
+    /** A short sentence that explains the pricing rule, shown on the website. */
     public abstract String getPricingNote();
 
-    // ---------------------------------------------------------------------
-    // Shared behaviour
-    // ---------------------------------------------------------------------
+    // =====================================================================
+    // Methods shared by all rooms (inherited by every subclass)
+    // =====================================================================
 
     /**
-     * Features shown to guests. Subclasses override this and call super
-     * to add their own type-specific features on top of the amenities.
+     * List of features shown to guests.
+     * OOP - POLYMORPHISM: subclasses OVERRIDE this method and add their own features.
      */
     public List<String> getRoomFeatures() {
-        return new ArrayList<>(amenities);
+        return new ArrayList<>(amenities);   // return a copy, not the real list (encapsulation)
     }
 
     /**
-     * Total cost of a stay. This method is final: the algorithm (add up every night)
-     * is the same for every room, but the call to calculateNightlyRate() is
-     * dispatched at runtime to the correct subclass (runtime polymorphism).
+     * Total price of a stay = add up the price of every night.
+     *
+     * OOP - POLYMORPHISM: calculateNightlyRate(night) below runs the version of the
+     * REAL object - a SuiteRoom uses suite prices, a DeluxeRoom uses deluxe prices -
+     * even though this code only knows it is a "Room". Java decides at runtime.
+     *
+     * "final" = subclasses cannot change how the total is added up.
      */
     public final BigDecimal calculateStayCost(StayPeriod stay) {
         BigDecimal total = BigDecimal.ZERO;
         for (LocalDate night : stay.getNightDates()) {
-            total = total.add(calculateNightlyRate(night));
+            total = total.add(calculateNightlyRate(night));   // OOP - POLYMORPHISM happens here
         }
         return money(total);
     }
 
-    /** METHOD OVERLOADING: same operation, accepting two dates instead of a StayPeriod. */
+    /**
+     * OOP - POLYMORPHISM (method OVERLOADING): same method name as above,
+     * but it takes two dates instead of a StayPeriod.
+     */
     public final BigDecimal calculateStayCost(LocalDate checkIn, LocalDate checkOut) {
         return calculateStayCost(new StayPeriod(checkIn, checkOut));
     }
 
-    /** Night-by-night prices, used to show a transparent price breakdown. */
+    /** Price of each night, used for the price breakdown on the website. */
     public Map<LocalDate, BigDecimal> getNightlyBreakdown(StayPeriod stay) {
         Map<LocalDate, BigDecimal> breakdown = new LinkedHashMap<>();
         for (LocalDate night : stay.getNightDates()) {
-            breakdown.put(night, calculateNightlyRate(night));
+            breakdown.put(night, calculateNightlyRate(night));   // OOP - POLYMORPHISM
         }
         return breakdown;
     }
 
+    /** Can this room hold the given number of guests? */
     public boolean canAccommodate(int guests) {
         return guests >= 1 && guests <= capacity;
     }
 
+    /** A room can be booked only when it is NOT under maintenance. */
     public boolean isBookable() {
         return !underMaintenance;
     }
@@ -114,22 +132,26 @@ public abstract class Room implements Identifiable {
         return name + " · Room " + roomNumber;
     }
 
-    /** Helper for subclasses: Friday and Saturday nights are weekend nights. */
+    /**
+     * Helper used by the subclasses: Friday and Saturday nights are weekend nights.
+     * "protected" = only this class and its subclasses can use it (OOP - INHERITANCE).
+     */
     protected static boolean isWeekendNight(LocalDate night) {
         DayOfWeek day = night.getDayOfWeek();
         return day == DayOfWeek.FRIDAY || day == DayOfWeek.SATURDAY;
     }
 
-    /** Helper for subclasses: round a monetary value to 2 decimal places. */
+    /** Helper used by the subclasses: round money to 2 decimal places. */
     protected static BigDecimal money(BigDecimal value) {
         return value.setScale(2, RoundingMode.HALF_UP);
     }
 
-    // ---------------------------------------------------------------------
-    // Getters and validating setters (encapsulation)
-    // ---------------------------------------------------------------------
+    // =====================================================================
+    // OOP - ENCAPSULATION: getters (read) and setters (change).
+    // Each setter CHECKS the value and refuses bad data.
+    // =====================================================================
 
-    @Override
+    @Override   // required by the Identifiable interface
     public String getId() {
         return id;
     }
@@ -139,6 +161,7 @@ public abstract class Room implements Identifiable {
     }
 
     public void setRoomNumber(String roomNumber) {
+        // only 1-10 letters, digits or dashes are allowed
         if (roomNumber == null || !roomNumber.trim().matches("[A-Za-z0-9-]{1,10}")) {
             throw new IllegalArgumentException("Room number must be 1-10 letters, digits or dashes.");
         }
@@ -166,6 +189,7 @@ public abstract class Room implements Identifiable {
     }
 
     public void setBasePrice(BigDecimal basePrice) {
+        // the price must be more than 0 and not unrealistically large
         if (basePrice == null || basePrice.signum() <= 0 || basePrice.compareTo(MAX_PRICE) > 0) {
             throw new IllegalArgumentException("Price per night must be greater than zero.");
         }
@@ -177,26 +201,38 @@ public abstract class Room implements Identifiable {
     }
 
     public void setCapacity(int capacity) {
+        // a room holds 1 to 10 guests
         if (capacity < 1 || capacity > MAX_CAPACITY) {
             throw new IllegalArgumentException("Capacity must be between 1 and " + MAX_CAPACITY + " guests.");
         }
         this.capacity = capacity;
     }
 
-    /** Returns a read-only view so callers cannot modify the internal list directly. */
+    /**
+     * OOP - ENCAPSULATION: returns a READ-ONLY list.
+     * Other classes can read the amenities but cannot add or remove items directly.
+     */
     public List<String> getAmenities() {
         return Collections.unmodifiableList(amenities);
     }
 
+    /** Replaces the amenity list. Empty and duplicate items are skipped. */
     public void setAmenities(List<String> newAmenities) {
-        amenities.clear();
+        List<String> cleaned = new ArrayList<>();
         if (newAmenities != null) {
             for (String amenity : newAmenities) {
-                if (amenity != null && !amenity.isBlank() && !amenities.contains(amenity.trim())) {
-                    amenities.add(amenity.trim());
+                if (amenity == null || amenity.isBlank() || cleaned.contains(amenity.trim())) {
+                    continue;   // skip empty or repeated amenities
                 }
+                if (amenity.trim().length() > MAX_AMENITY_LENGTH) {
+                    throw new IllegalArgumentException("Each amenity must be at most " + MAX_AMENITY_LENGTH + " characters.");
+                }
+                cleaned.add(amenity.trim());
             }
         }
+        // check everything first, then replace - the list is never left half-changed
+        amenities.clear();
+        amenities.addAll(cleaned);
     }
 
     public String getImageUrl() {
@@ -204,6 +240,7 @@ public abstract class Room implements Identifiable {
     }
 
     public void setImageUrl(String imageUrl) {
+        // use a default photo when no image is given
         this.imageUrl = (imageUrl == null || imageUrl.isBlank()) ? "/images/rooms/standard-city.jpg" : imageUrl.trim();
     }
 
@@ -215,6 +252,7 @@ public abstract class Room implements Identifiable {
         this.underMaintenance = underMaintenance;
     }
 
+    /** Helper: text must not be empty and must not be too long. */
     protected static String requireText(String value, String fieldName, int maxLength) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required.");
@@ -226,7 +264,7 @@ public abstract class Room implements Identifiable {
         return trimmed;
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides toString() from Java's Object class
     public String toString() {
         return getType() + " " + roomNumber + " (" + id + ")";
     }

@@ -5,16 +5,18 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * A booking of one room by one customer for a stay period.
+ * A booking: one customer books one room for some nights.
  *
- * ASSOCIATION: a reservation refers to its Customer and Room by ID
- * (the same way the records are linked in the text files).
- * COMPOSITION: the stay dates are held in a StayPeriod value object.
- * ENCAPSULATION: the status can only change through cancel(), and the booking
- * details only through updateBooking(); there are no free setters.
+ * OOP - ENCAPSULATION: there are NO normal setters. The booking can only be changed with
+ *       updateBooking(...) and the status only with cancel(), and both check the rules first.
+ * ASSOCIATION: a reservation is linked to a Customer and a Room by their IDs
+ *       (the same way the rows are linked in the MySQL tables).
+ * COMPOSITION: the dates are stored inside a StayPeriod object.
+ * OOP - ABSTRACTION: implements the Identifiable interface.
  */
 public class Reservation implements Identifiable {
 
+    // OOP - ENCAPSULATION: all fields private; id, customerId and createdAt can never change (final)
     private final String id;
     private final String customerId;
     private String roomId;
@@ -39,7 +41,7 @@ public class Reservation implements Identifiable {
         applyBookingDetails(roomId, stay, guests, totalPrice);
     }
 
-    /** Changes the room/dates/guests of a confirmed reservation. */
+    /** OOP - ENCAPSULATION: the ONLY way to change room/dates/guests - and only while confirmed. */
     public void updateBooking(String roomId, StayPeriod stay, int guests, BigDecimal totalPrice) {
         if (!isActive()) {
             throw new IllegalStateException("Only confirmed reservations can be changed.");
@@ -47,6 +49,7 @@ public class Reservation implements Identifiable {
         applyBookingDetails(roomId, stay, guests, totalPrice);
     }
 
+    /** OOP - ENCAPSULATION: the ONLY way to change the status. */
     public void cancel() {
         if (status == ReservationStatus.CANCELLED) {
             throw new IllegalStateException("Reservation " + id + " is already cancelled.");
@@ -125,7 +128,7 @@ public class Reservation implements Identifiable {
         return createdAt;
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides Object.toString()
     public String toString() {
         return id + " [" + status + "] room " + roomId + " " + stay;
     }

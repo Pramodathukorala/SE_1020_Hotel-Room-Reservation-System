@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Booking ' + ${details.reservation.id})}"></head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<nav th:replace="~{fragments/layout :: navbar(false)}"></nav>
+
+<main id="main" class="page-offset" th:with="r=${details.reservation}, room=${details.room}, c=${details.customer}">
+    <div class="container py-4" style="max-width:880px">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small mb-0">
+                <li class="breadcrumb-item"><a th:href="@{/my-bookings}">My bookings</a></li>
+                <li class="breadcrumb-item active" aria-current="page" th:text="${r.id}">RES</li>
+            </ol>
+        </nav>
+
+        <article class="ticket">
+            <div class="ticket-head d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="small text-uppercase" style="letter-spacing:.18em;opacity:.7">Booking reference</div>
+                    <div class="ref" th:text="${r.id}">RES-0001</div>
+                </div>
+                <span class="pill" th:classappend="${r.active} ? 'pill-confirmed' : 'pill-cancelled'" th:text="${r.status.displayName}">Confirmed</span>
+            </div>
+            <div class="ticket-body">
+                <div class="d-flex flex-column flex-sm-row gap-3 align-items-sm-center" th:if="${room != null}">
+                    <img th:src="@{${room.imageUrl}}" th:alt="${room.name}" class="rounded-3" style="width:150px;height:110px;object-fit:cover">
+                    <div>
+                        <div class="eyebrow mb-1" th:text="${room.type.displayName} + ' · Room ' + ${room.roomNumber}">Suite</div>
+                        <h1 class="h3 mb-1" th:text="${room.name}">Room</h1>
+                        <p class="small text-muted-soft mb-0" th:text="${room.pricingNote}">note</p>
+                    </div>
+                </div>
+
+                <div class="ticket-divider"></div>
+
+                <div class="dl-grid">
+                    <div><div class="k">Check-in</div><div class="v" th:text="${@fmt.date(r.checkIn)}">date</div><div class="small text-muted-soft">from 2:00 PM</div></div>
+                    <div><div class="k">Check-out</div><div class="v" th:text="${@fmt.date(r.checkOut)}">date</div><div class="small text-muted-soft">by 12:00 PM</div></div>
+                    <div><div class="k">Stay</div><div class="v" th:text="${@fmt.nights(r.nights)} + ' · ' + ${r.guests} + (${r.guests} == 1 ? ' guest' : ' guests')">2 nights</div></div>
+                    <div><div class="k">Booked on</div><div class="v" th:text="${@fmt.dateTime(r.createdAt)}">date</div></div>
+                    <div><div class="k">Guest</div><div class="v" th:text="${c.fullName}">Name</div><div class="small text-muted-soft" th:text="${c.email}">email</div></div>
+                </div>
+
+                <div class="ticket-divider"></div>
+
+                <div class="d-flex justify-content-between align-items-baseline">
+                    <span class="text-muted-soft">Total for your stay</span>
+                    <span class="price-big" th:text="${@fmt.money(r.totalPrice)}">LKR</span>
+                </div>
+            </div>
+        </article>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <a class="btn btn-outline-navy" th:href="@{/my-bookings}"><i class="bi bi-arrow-left me-1"></i>All my bookings</a>
+            <a class="btn btn-navy" th:if="${r.active and r.checkOut.isAfter(today)}" th:href="@{/my-bookings/{id}/edit(id=${r.id})}"><i class="bi bi-pencil me-1"></i>Change dates or guests</a>
+            <form th:if="${r.active and r.checkOut.isAfter(today)}" th:action="@{/my-bookings/{id}/cancel(id=${r.id})}" method="post"
+                  th:attr="data-confirm='Booking ' + ${r.id} + ' will be cancelled and the room released. This cannot be undone.'"
+                  data-confirm-title="Cancel this booking?" data-confirm-button="Yes, cancel booking">
+                <button class="btn btn-ghost-danger" type="submit"><i class="bi bi-x-circle me-1"></i>Cancel booking</button>
+            </form>
+            <form th:if="${!r.active}" th:action="@{/my-bookings/{id}/delete(id=${r.id})}" method="post"
+                  th:attr="data-confirm='Cancelled booking ' + ${r.id} + ' will be permanently removed from your list.'"
+                  data-confirm-title="Delete this booking?" data-confirm-button="Delete">
+                <button class="btn btn-ghost-danger" type="submit"><i class="bi bi-trash me-1"></i>Delete booking</button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<div class="mt-5"></div>
+<div th:replace="~{fragments/layout :: confirmModal}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

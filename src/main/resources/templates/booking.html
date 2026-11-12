@@ -57,9 +57,29 @@
                         <p class="small text-muted-soft mt-3 mb-0"><i class="bi bi-moon-stars me-1"></i><span data-nights-output>Select dates</span> · changed your dates? Press "Update price" to refresh the total.</p>
                     </section>
 
-                    <section class="panel">
+                    <!-- signed in: the booking uses the saved profile (the server enforces this too) -->
+                    <section class="panel" th:if="${currentGuest != null}">
                         <h2 class="panel-title">Guest details</h2>
-                        <p class="small text-muted-soft">Returning guest? Use the same email address and we'll link this booking to your profile.</p>
+                        <p class="small text-muted-soft">You are signed in, so this booking will be added to <a th:href="@{/my-bookings}">My bookings</a>.</p>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="avatar avatar-lg" th:text="${#strings.substring(currentGuest.displayName, 0, 1)}">G</span>
+                            <div class="small">
+                                <div class="fw-semibold fs-6" th:text="*{customer.fullName}">Name</div>
+                                <div th:text="*{customer.email}">email</div>
+                                <div th:text="*{customer.phone}">phone</div>
+                                <div class="text-muted-soft" th:text="*{customer.address}">address</div>
+                            </div>
+                        </div>
+                        <input type="hidden" th:field="*{customer.fullName}">
+                        <input type="hidden" th:field="*{customer.email}">
+                        <input type="hidden" th:field="*{customer.phone}">
+                        <input type="hidden" th:field="*{customer.address}">
+                        <a class="small d-inline-block mt-3" th:href="@{/account/profile}">Update my details</a>
+                    </section>
+
+                    <section class="panel" th:if="${currentGuest == null}">
+                        <h2 class="panel-title">Guest details</h2>
+                        <p class="small text-muted-soft">Have an account? <a th:href="@{/login}">Sign in</a> to fill these in automatically and manage this booking later. Booking without an account is fine too.</p>
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label" for="customer.fullName">Full name</label>

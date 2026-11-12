@@ -3,8 +3,11 @@ package com.hotel.reservation.model;
 import java.util.regex.Pattern;
 
 /**
- * A hotel guest. ENCAPSULATION: fields are private and every setter
- * validates its value, so an invalid email or phone can never be stored.
+ * A hotel guest (name, email, phone, address).
+ *
+ * OOP - ENCAPSULATION: all fields are private, and every setter checks its value,
+ *       so a Customer can never hold an invalid email or phone number.
+ * OOP - ABSTRACTION: implements the Identifiable interface (it has an ID).
  */
 public class Customer implements Identifiable {
 
@@ -13,12 +16,14 @@ public class Customer implements Identifiable {
     /** Optional leading +, then 9 to 15 digits; spaces and dashes are allowed between digits. */
     public static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[0-9](?:[ -]?[0-9]){8,14}$");
 
-    private final String id;
+    // OOP - ENCAPSULATION: private fields - other classes must use the getters/setters
+    private final String id;          // final = never changes
     private String fullName;
     private String email;
     private String phone;
     private String address;
 
+    /** Constructor: uses the setters, so every value is checked (OOP - ENCAPSULATION). */
     public Customer(String id, String fullName, String email, String phone, String address) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Customer ID is required.");
@@ -30,7 +35,7 @@ public class Customer implements Identifiable {
         setAddress(address);
     }
 
-    @Override
+    @Override   // required by the Identifiable interface
     public String getId() {
         return id;
     }
@@ -39,6 +44,7 @@ public class Customer implements Identifiable {
         return fullName;
     }
 
+    // OOP - ENCAPSULATION: checked setter - name must be 2 to 80 characters
     public void setFullName(String fullName) {
         if (fullName == null || fullName.trim().length() < 2 || fullName.trim().length() > 80) {
             throw new IllegalArgumentException("Full name must be between 2 and 80 characters.");
@@ -50,9 +56,9 @@ public class Customer implements Identifiable {
         return email;
     }
 
-    /** Emails are stored in lower case so duplicate checks are case-insensitive. */
+    /** OOP - ENCAPSULATION: checked setter. Emails are saved in lower case so "A@x.com" equals "a@x.com". */
     public void setEmail(String email) {
-        if (email == null || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
+        if (email == null || email.trim().length() > 120 || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
             throw new IllegalArgumentException("Please enter a valid email address.");
         }
         this.email = email.trim().toLowerCase();
@@ -62,6 +68,7 @@ public class Customer implements Identifiable {
         return phone;
     }
 
+    // OOP - ENCAPSULATION: checked setter - 9 to 15 digits
     public void setPhone(String phone) {
         if (phone == null || !PHONE_PATTERN.matcher(phone.trim()).matches()) {
             throw new IllegalArgumentException("Please enter a valid phone number (9-15 digits).");
@@ -73,6 +80,7 @@ public class Customer implements Identifiable {
         return address;
     }
 
+    // OOP - ENCAPSULATION: checked setter - 3 to 200 characters
     public void setAddress(String address) {
         if (address == null || address.trim().length() < 3 || address.trim().length() > 200) {
             throw new IllegalArgumentException("Address must be between 3 and 200 characters.");
@@ -91,7 +99,7 @@ public class Customer implements Identifiable {
         return initials.toString();
     }
 
-    @Override
+    @Override   // OOP - POLYMORPHISM: overrides Object.toString()
     public String toString() {
         return fullName + " (" + id + ")";
     }

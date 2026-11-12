@@ -1,10 +1,10 @@
 # The Aurelia — Hotel Room Reservation System
 
-**SE1020 Object-Oriented Programming project** · Java 21 · Spring Boot 3.5 · Thymeleaf · Bootstrap 5 · text-file persistence
+**SE1020 Object-Oriented Programming project** · Java 21 · Spring Boot 3.5 · Thymeleaf · Bootstrap 5 · MySQL
 
 A web-based hotel reservation system for a fictional boutique hotel, "The Aurelia". Guests can browse rooms, check real availability for their dates, see the exact price of every night, book a room and later look up or cancel their booking. Administrators manage rooms, customers and reservations from a dashboard.
 
-The project focuses on **object-oriented design in Java**: an abstract `Room` class with three subclasses that each price a night differently, encapsulated entities with validating setters, repository interfaces that hide the file storage, and a layered Controller → Service → Repository → File architecture.
+The project focuses on **object-oriented design in Java**: an abstract `Room` class with three subclasses that each price a night differently, encapsulated entities with validating setters, repository interfaces that hide the SQL, and a layered Controller → Service → Repository → MySQL architecture.
 
 ---
 
@@ -16,8 +16,9 @@ The project focuses on **object-oriented design in Java**: an abstract `Room` cl
 | **Customer management** | Register, view (with booking history), search, edit and delete customers. Email, phone and name validation; duplicate emails are rejected. |
 | **Reservation management** | Create (guest website or admin), view, search, edit, cancel and delete reservations. Real date-overlap checking prevents double booking; totals are calculated automatically with `BigDecimal`. |
 | **Guest website** | Home page with availability search, room catalogue with filters, room details with per-night price breakdown, booking form, confirmation page, "Manage booking" (lookup + cancel). |
+| **Accounts & sign-in** | Guests register and sign in with email and password. **My bookings** lets them view, edit (dates and guests, with the price recalculated), cancel and delete their own bookings, and update their profile. Administrators sign in separately with a username and password stored in their own `admins` table. Passwords are stored as BCrypt hashes. |
 | **Admin dashboard** | Overview cards (rooms, customers, active bookings, reservations), tonight's occupancy, upcoming stays, room status, and full CRUD tables with search and confirmation dialogs. |
-| **Persistence** | `data/rooms.txt`, `data/customers.txt`, `data/reservations.txt` — loaded at start-up, rewritten safely after every change. |
+| **Persistence** | MySQL database `hotel_reservation` with tables `rooms`, `room_amenities`, `customers` and `reservations`, accessed with plain SQL through Spring `JdbcTemplate`. |
 
 ### Booking rules (enforced in `ReservationService`)
 - Room and customer must exist.
@@ -39,57 +40,74 @@ The project focuses on **object-oriented design in Java**: an abstract `Room` cl
 - **Views:** Thymeleaf server-side templates
 - **Frontend:** HTML5, CSS3, vanilla JavaScript, Bootstrap 5.3.3 and Bootstrap Icons 1.11.3 (stored locally in `static/vendor`, so the site works offline)
 - **Fonts:** Cormorant Garamond and Inter (Google Fonts; falls back to Georgia/system fonts when offline)
-- **Storage:** Java NIO file reading/writing (no database)
+- **Database:** MySQL 8 (driver `mysql-connector-j`), plain SQL via Spring JDBC (`JdbcTemplate`), schema in `src/main/resources/schema.sql`
+- **Test database:** H2 in-memory, MySQL compatibility mode (tests only)
 - **Tests:** JUnit 5, AssertJ, Spring MockMvc
 
 ## 3. Setup requirements
 - JDK **21 or newer** (developed and tested with JDK 23, compiled with `--release 21`)
 - Apache Maven 3.9+
+- **MySQL Server 8** (MySQL Installer, or XAMPP's MySQL/MariaDB) running on `localhost:3306`
 - Internet access the first time Maven downloads dependencies
 - VS Code with the *Extension Pack for Java* (recommended in `.vscode/extensions.json`)
 
 ## 4. How to run
 
-### In VS Code
-1. Open the project folder in VS Code and let the Java extension import the Maven project.
-2. Open **Run and Debug** and choose **"Run Hotel Reservation System"**, or open `HotelReservationApplication.java` and click **Run**.
-3. Visit <http://localhost:8080> (guest website) and <http://localhost:8080/admin> (admin dashboard).
+### Step 1 — Prepare MySQL (once)
+1. Install **MySQL Server 8** and start it (it listens on port 3306).
+2. Give the application your MySQL login. Either:
+   - copy `application-local.properties.example` to **`application-local.properties`** in the project folder and enter your password there (this file is git-ignored), **or**
+   - set the environment variables `DB_USERNAME` and `DB_PASSWORD`.
 
-### From a terminal
+You do **not** need to create the database or tables yourself. The connection URL contains `createDatabaseIfNotExist=true`, and `schema.sql` creates the tables at start-up (`CREATE TABLE IF NOT EXISTS`, so existing data is never touched).
+
+### Step 2 — Run the application
+**In VS Code:** open **Run and Debug**, choose **"Run Hotel Reservation System"** (or click **Run** above `main` in `HotelReservationApplication.java`).
+**In IntelliJ IDEA:** *File → Open →* select `pom.xml` → *Open as Project*, then run `HotelReservationApplication`.
+**From a terminal:**
 ```bash
 mvn spring-boot:run
 ```
 
-On the first run the application creates the `data/` folder with 9 sample rooms and 3 sample customers. No sample reservations are created; every reservation comes from the real booking flow. To start again from the sample data, stop the application and delete the `data/` folder.
+Then open <http://localhost:8080> (guest website). The admin console is at <http://localhost:8080/admin/login>. There is deliberately no link to it on the public website.
 
-The data folder can be changed in `src/main/resources/application.properties` (`hotel.storage.data-dir`).
+**Admin login:** when the `admins` table is empty, the first administrator is created from `hotel.admin.username` and `hotel.admin.password` in `application-local.properties`. If no password is set, a random one is printed once in the console. The password is then stored only as a BCrypt hash in MySQL.
 
-> There is no login: the admin area is open so that it can be demonstrated easily. Authentication is outside the scope of this OOP project.
+**Guest login:** guests create their own account at <http://localhost:8080/register>, then sign in at `/login`.
+
+When the database is completely empty, the application adds 9 sample rooms and 3 sample customers. No sample reservations are created; every reservation comes from the real booking flow. To start again from the sample data, drop the database in MySQL (`DROP DATABASE hotel_reservation;`) and restart the application.
+
 
 ## 5. Project structure
 
 ```
 src/main/java/com/hotel/reservation
 ├── HotelReservationApplication.java     Spring Boot entry point
-├── config/        AppConfig (Clock bean), SampleDataInitializer (first-run data)
+├── config/        AppConfig (Clock, PasswordEncoder), WebConfig (login interceptor),
+│                  SampleDataInitializer, AdminAccountInitializer (first admin)
+├── security/      SessionUser, CurrentUser, AuthInterceptor (session-based sign-in)
 ├── model/         Room (abstract), StandardRoom, DeluxeRoom, SuiteRoom, RoomType,
-│                  Customer, Reservation, ReservationStatus, StayPeriod, Identifiable
+│                  Customer, Reservation, ReservationStatus, StayPeriod, Identifiable,
+│                  UserAccount (abstract), AdminAccount, GuestAccount, Role
 ├── dto/           RoomForm, CustomerForm, ReservationForm, BookingForm (form objects)
 │                  ReservationDetails, BookingQuote, DashboardStats (view records)
-├── repository/    DataRepository<T>, RoomRepository, CustomerRepository, ReservationRepository
-│   └── file/      AbstractFileRepository<T>, FileRoomRepository, FileCustomerRepository,
-│                  FileReservationRepository
-├── service/       RoomService, CustomerService, ReservationService (business rules)
-├── controller/    HomeController, RoomController, BookingController,
+├── repository/    DataRepository<T>, RoomRepository, CustomerRepository, ReservationRepository,
+│                  AdminRepository, GuestAccountRepository
+│   └── jdbc/      AbstractJdbcRepository<T>, JdbcRoomRepository, JdbcCustomerRepository,
+│                  JdbcReservationRepository, JdbcAdminRepository, JdbcGuestAccountRepository
+├── service/       RoomService, CustomerService, ReservationService, AccountService
+├── controller/    HomeController, RoomController, BookingController, AuthController, MyAccountController,
 │   │              GlobalControllerAdvice, FormErrors
 │   └── admin/     AdminDashboardController, AdminRoomController,
 │                  AdminCustomerController, AdminReservationController, RoomImages
 ├── exception/     HotelException, ResourceNotFoundException, ValidationException,
-│                  BookingConflictException, StorageException
-└── util/          RecordCodec (file line format), Formats (money/date formatting)
+│                  BookingConflictException
+└── util/          Formats (money/date formatting)
 
 src/main/resources
-├── application.properties
+├── application.properties   database connection settings
+├── schema.sql               CREATE TABLE statements (MySQL)
+├── schema-mysql.sql         MySQL-only views for Workbench
 ├── templates/     Thymeleaf pages (+ fragments/ and admin/)
 └── static/        css/style.css, js/app.js, images/, vendor/ (Bootstrap)
 
@@ -103,10 +121,10 @@ A full explanation with code references is in [docs/OOP_EXPLANATION.md](docs/OOP
 | Concept | Where |
 |---|---|
 | **Encapsulation** | Private fields with validating setters in `Room`, `Customer`; `Reservation` changes only through `updateBooking()` and `cancel()`; `getAmenities()` returns a read-only list. |
-| **Inheritance** | `StandardRoom`, `DeluxeRoom`, `SuiteRoom` extend `Room`; `FileRoomRepository` etc. extend `AbstractFileRepository<T>`; custom exceptions extend `HotelException`. |
-| **Polymorphism** | `calculateNightlyRate()`, `getRoomFeatures()` and `getPricingNote()` are overridden; `Room.calculateStayCost()` calls them through a `Room` reference. |
-| **Abstraction** | Abstract `Room` and `AbstractFileRepository`; interfaces `Identifiable` and `DataRepository<T>`. |
-| **Information hiding** | Services depend on repository *interfaces*; only the `repository.file` package knows about text files. |
+| **Inheritance** | `StandardRoom`, `DeluxeRoom`, `SuiteRoom` extend `Room`; `AdminAccount` and `GuestAccount` extend `UserAccount`; `JdbcRoomRepository` etc. extend `AbstractJdbcRepository<T>`; custom exceptions extend `HotelException`. |
+| **Polymorphism** | `calculateNightlyRate()`, `getRoomFeatures()` and `getPricingNote()` are overridden; `UserAccount.getRole()` and `getHomePage()` decide where each user goes after sign-in; `Room.calculateStayCost()` calls them through a `Room` reference. |
+| **Abstraction** | Abstract `Room` and `AbstractJdbcRepository`; interfaces `Identifiable` and `DataRepository<T>`. |
+| **Information hiding** | Services depend on repository *interfaces*; only the `repository.jdbc` package contains SQL. Switching this project from text files to MySQL changed no service class. |
 | **Overloading** | `Room.calculateStayCost(StayPeriod)` and `calculateStayCost(LocalDate, LocalDate)`; `ReservationService.quote(...)` with and without a reservation to ignore. |
 | **Enums** | `RoomType`, `ReservationStatus` (with behaviour: `blocksAvailability()`). |
 | **Composition / association** | `Reservation` *has a* `StayPeriod`; `Room` owns its amenity list; `Reservation` refers to `Customer` and `Room` by ID. |
@@ -119,23 +137,26 @@ A full explanation with code references is in [docs/OOP_EXPLANATION.md](docs/OOP
 | Customer | `POST /admin/customers`, or automatically when booking | `/admin/customers`, `/admin/customers/{id}` | `POST /admin/customers/{id}` | `POST /admin/customers/{id}/delete` (refused if the customer has reservations) |
 | Reservation | `POST /book` (guest), `POST /admin/reservations` | `/admin/reservations`, `/admin/reservations/{id}`, `/manage-booking` | `POST /admin/reservations/{id}`; cancel: `POST .../cancel`, `POST /manage-booking/cancel` | `POST /admin/reservations/{id}/delete` (cancelled reservations only) |
 
-## 8. File handling
-Each file holds one record per line, with fields separated by `|`. The first line is a `#` comment describing the columns:
+## 8. Database (MySQL)
 
-```
-# id|customerId|roomId|checkIn|checkOut|guests|totalPrice|status|createdAt
-RES-0001|C004|R006|2026-11-17|2026-11-20|2|105000.00|CANCELLED|2026-11-12T07:56:14.908548
-```
+| Table | Contents | Key constraints |
+|---|---|---|
+| `rooms` | all rooms; `room_type` = `STANDARD` / `DELUXE` / `SUITE` | PK `id`, UNIQUE `room_number`, CHECK price > 0, CHECK capacity 1–10 |
+| `room_amenities` | one row per amenity, ordered by `sort_order` | FK → `rooms` with `ON DELETE CASCADE` |
+| `customers` | guest details | PK `id`, UNIQUE `email` |
+| `guest_accounts` | password hash of registered guests (id = customer id) | PK/FK `id` to `customers`, ON DELETE CASCADE |
+| `admins` | administrator logins: username, name, password hash | PK `id`, UNIQUE `username` |
+| `reservations` | stays, guests, total, status | FK → `customers`, FK → `rooms`, CHECK `check_out > check_in` |
 
-- **Loading:** each repository reads its file once at start-up into a `LinkedHashMap` (ID → object).
-- **Subclasses:** the `type` column in `rooms.txt` decides whether a `StandardRoom`, `DeluxeRoom` or `SuiteRoom` is rebuilt.
-- **Saving:** every create, update or delete rewrites the file. The content is written to `rooms.txt.tmp` first, then moved over the real file in one step (atomic move), so a crash cannot leave a half-written file.
-- **Escaping:** `|`, `\`, line breaks and `;` inside user text are escaped by `RecordCodec`, so input such as `Sea | Sky` cannot break the format.
-- **Bad data:** missing files mean "no records yet"; empty and comment lines are ignored; malformed lines and duplicate IDs are skipped with a warning, and the original file is copied to `*.corrupt-<timestamp>.bak` before it is ever rewritten.
-- **IDs:** `nextId()` finds the highest existing number and adds one (`R010`, `C004`, `RES-0003`), so IDs are never reused while records exist.
+- **Inheritance in the database:** all three room subclasses share the `rooms` table (single-table inheritance). `JdbcRoomRepository.mapRow()` reads `room_type` and creates the matching subclass; columns that do not apply to a type (e.g. `butler_service` for a Standard room) are `NULL`.
+- **Plain SQL:** every query is written in the repository classes using `?` parameters, e.g. `SELECT * FROM reservations WHERE room_id = ? ORDER BY check_in`. Parameters make SQL injection impossible.
+- **Transactions:** saving a room writes the `rooms` row and its `room_amenities` rows inside one `@Transactional` method — either everything is saved or nothing.
+- **Two safety nets:** services check business rules first (friendly messages); the database constraints (foreign keys, unique keys, checks) still reject bad data if a rule is ever bypassed.
+- **Views for Workbench:** `schema-mysql.sql` adds `v_booking_details` (each booking with guest and room) and `v_room_details` (each room with all its amenities). `SELECT * FROM v_booking_details;` shows every booking in one query. More queries are in `database/workbench-setup.sql`.
+- **IDs:** `nextId()` finds the highest existing number and adds one (`R010`, `C004`, `RES-0003`).
 
 ## 9. Screenshots
-These were captured from the running application with headless Chrome while it was being tested. They show test data entered during development.
+These were captured from the running application with headless Chrome during testing (before storage moved from text files to MySQL; the pages themselves did not change). They show test data entered during development.
 
 | Home | Room catalogue |
 |---|---|
@@ -151,17 +172,18 @@ Mobile layout (home and admin reservations): ![Mobile](docs/screenshots/mobile.j
 ```bash
 mvn test
 ```
-52 automated tests in five classes:
+63 automated tests in six classes:
 
 | Test class | Covers |
 |---|---|
 | `ModelTest` | polymorphic nightly rates, overloaded `calculateStayCost`, `StayPeriod` overlap rule, encapsulation guards, cancel behaviour |
 | `RoomAndCustomerServiceTest` | room create/update (including changing type)/delete/search, duplicate room numbers, customer register/update/delete/search, duplicate and invalid emails |
 | `ReservationServiceTest` | booking, Standard/Deluxe/Suite totals, double-booking rejection, same-day turnover, cancellation releasing the room, past/invalid dates, capacity, maintenance, unknown IDs, edits, delete rules |
-| `FilePersistenceTest` | data surviving a restart (subclasses rebuilt), escaping special characters, malformed lines skipped and backed up, empty/missing files, no leftover temp files |
-| `WebFlowTest` | full Spring application through HTTP: pages render, guest booking → confirmation, double booking shown to the user, validation messages, admin CRUD |
+| `DatabasePersistenceTest` | data surviving a restart (subclasses and amenities rebuilt from SQL), updates/deletes, quotes and SQL-like text stored safely, foreign-key / unique constraints enforced by the database |
+| `AccountServiceTest` | registration, BCrypt hashes (never plain text), guest and admin sign-in, wrong passwords, duplicate emails, linking past bookings, guests can only manage their own bookings |
+| `WebFlowTest` | full Spring application through HTTP: pages render, guest booking to confirmation, double booking, validation, admin pages need an admin login, guest register, book, edit, cancel and delete, another guest cannot see the booking, no admin button on the home page |
 
-The service tests use a fixed `Clock` (Monday 7 January 2030), so weekend pricing and "past date" checks give the same result on any day. Each test uses its own temporary data folder and never touches `data/`.
+The service tests use a fixed `Clock` (Monday 7 January 2030), so weekend pricing and "past date" checks give the same result on any day. Tests use an in-memory **H2** database in MySQL mode, created from the same `schema.sql`, so they run without a MySQL server and never touch your real data.
 
 ## 11. Documentation
 - [docs/CLASS_DIAGRAM.md](docs/CLASS_DIAGRAM.md) — UML class diagrams (Mermaid)
@@ -172,6 +194,6 @@ The service tests use a fixed `Clock` (Monday 7 January 2030), so weekend pricin
 ## 12. GitHub
 Repository: <https://github.com/Pramodathukorala/SE_1020_Hotel-Room-Reservation-System>
 
-Individual project for SE1020. Runtime data (`data/`) and build output (`target/`) are excluded by `.gitignore`.
+Individual project for SE1020. Build output (`target/`) and your local database password file (`application-local.properties`) are excluded by `.gitignore`.
 
 Room and hotel photographs are from [Unsplash](https://unsplash.com) and are used under the Unsplash License. The hotel is fictional.
